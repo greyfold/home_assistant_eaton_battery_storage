@@ -4,4 +4,4 @@
 - Update the software to the latest version
 
 ---
-Next: [Setup HACS](https://greyfold.github.io/home_assistant_eaton_battery_storage/)
+Next: [Setup HACS](https://greyfold.github.io/home_assistant_eaton_battery_storage/setup-hacs)
