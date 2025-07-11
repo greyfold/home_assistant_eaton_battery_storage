@@ -16,7 +16,7 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         try:
-            response = await self.api.get_data()
+            response = await self.api.get_status()
             return response.get("result", {})  # Extract only the 'result' part
         except Exception as err:
             raise UpdateFailed(f"Error fetching data: {err}")

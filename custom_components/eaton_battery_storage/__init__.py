@@ -14,9 +14,10 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _LOGGER.debug("Setting up Eaton xStorage Home from config entry.")
     api = EatonBatteryAPI(
+        username=entry.data["username"],
+        password=entry.data["password"],
         hass=hass,
         host=entry.data["host"],
-        api_key=data["api_key"],
         app_id="com.eaton.xstoragehome",
         name="Eaton xStorage Home",
         manufacturer="Eaton"
@@ -29,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN]["coordinator"] = coordinator
 
     hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+        hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     )
 
     return True
