@@ -23,6 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         manufacturer="Eaton"
     )
     await api.connect()
+    hass.data[DOMAIN]["api"] = api
     coordinator = EatonXstorageHomeCoordinator(hass, api)
     await coordinator.async_config_entry_first_refresh()
 

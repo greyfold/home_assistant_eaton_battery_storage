@@ -96,3 +96,12 @@ class EatonBatteryAPI:
 
     async def get_status(self):
         return await self.make_request("GET", "/api/device/status")
+
+    async def get_notifications(self):
+        unread_json = await self.make_request("GET", "/api/notifications/unread")
+        unread_count = unread_json["result"]["total"]
+        if unread_count == 0:
+            return {}
+        response_json = await self.make_request("GET", "/api/device/notifications", params = {"status": "NORMAL", "offset": 0, "size": unread_count})
+        await self.make_request("GET", "/api/notifications/read/all")
+        return response_json
