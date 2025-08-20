@@ -1,13 +1,13 @@
 {
   "domain": "eaton_battery_storage",
-  "name": "Home Assistant Eaton xStorage Home Battery Integration (DEV)",
-  "codeowners": ["@genestealer"],
+  "name": "Home Assistant Eaton xStorage Home Battery Integration",
+  "codeowners": ["@greyfold"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/genestealer/home_assistant_eaton_battery_storage",
+  "documentation": "https://github.com/greyfold/home_assistant_eaton_battery_storage",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/genestealer/home_assistant_eaton_battery_storage/issues",
+  "issue_tracker": "https://github.com/greyfold/home_assistant_eaton_battery_storage/issues",
   "requirements": [],
-  "version": "0.2.0"
+  "version": "0.1.2"
 }
