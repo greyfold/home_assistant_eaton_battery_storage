@@ -9,4 +9,4 @@
 8. Save the IP address, you will need to enter it in the Home Assistant device configuration wizard.
 
 ---
-Next: [Setup your home assistant](https://genestealer.github.io/home_assistant_eaton_battery_storage/setup-home-assistant)
+Next: [Setup your home assistant](https://greyfold.github.io/home_assistant_eaton_battery_storage/setup-home-assistant)

@@ -74,4 +74,4 @@ Select a zone to add to your HACS integration and click on **Finish**.
 ![Zone](https://raw.githubusercontent.com/greyfold/home_assistant_eaton_xstorage_home/refs/heads/main/images/hacs-configuration-final.png "Zone")
 
 ---
-Next: [Install and configure eaton_battery_storage integration](https://genestealer.github.io/home_assistant_eaton_battery_storage/setup-eaton-battery-storage-integration)
+Next: [Install and configure eaton_battery_storage integration](https://greyfold.github.io/home_assistant_eaton_battery_storage/setup-eaton-battery-storage-integration)

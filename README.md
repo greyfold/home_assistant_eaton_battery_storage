@@ -65,7 +65,7 @@ The available documentation provides 4 steps to setup an Eaton xStorage Hybrid u
 - HACS installation and configuration
 - Eaton Battery Storage installation and configuration
 
-[Read the documentation ➜](https://genestealer.github.io/home_assistant_eaton_battery_storage/)
+[Read the documentation ➜](https://greyfold.github.io/home_assistant_eaton_battery_storage/)
 
 ## Entities provided by this integration
 
