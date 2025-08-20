@@ -1,4 +1,7 @@
 import logging
+
+from homeassistant.core import callback
+from homeassistant.components.event import EventEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import PERCENTAGE, UnitOfPower
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -38,9 +41,29 @@ SENSOR_TYPES = {
 }
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
+    api = hass.data[DOMAIN]["api"]
     coordinator = hass.data[DOMAIN]["coordinator"]
     entities = [EatonXStorageSensor(coordinator, key, description) for key, description in SENSOR_TYPES.items()]
+    entities.append(EatonXStorageNotification(api))
     async_add_entities(entities)
+
+
+class EatonXStorageNotification(EventEntity):
+    _attr_event_types = []
+
+    def __init__(self, api):
+        self._api = api
+
+    @callback
+    def _async_handle_event(self, event):
+        self._trigger_event(event)
+        self.async_write_ha_state()
+
+    async def async_update(self):
+        notifications = await self._api.get_notifications()
+        for notification in notifications:
+            self._async_handle_event(notification)
+
 
 class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, key, description):
