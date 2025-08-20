@@ -1,5 +1,5 @@
 {
-    "name": "Eaton Battery Storage System",
+    "name": "Eaton xStorage Home Battery Storage System",
     "content_in_root": false,
     "homeassistant": "2023.5.0"
 }
