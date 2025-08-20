@@ -1,6 +1,7 @@
 import logging
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.helpers import selector as sel
 from .const import DOMAIN
 from .api import EatonBatteryAPI
 
@@ -54,12 +55,12 @@ class EatonXStorageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required("host"): str,
-                    vol.Required("username"): str,
-                    vol.Required("password"): str,
-                    vol.Required("inverter_sn"): str,
-                    vol.Required("email"): str,
-                    vol.Required("has_pv", default=False): bool,
+                    vol.Required("host"): sel.selector({"text": {}}),
+                    vol.Required("username"): sel.selector({"text": {}}),
+                    vol.Required("password"): sel.selector({"text": {"type": "password"}}),
+                    vol.Required("inverter_sn"): sel.selector({"text": {}}),
+                    vol.Required("email"): sel.selector({"text": {}}),
+                    vol.Required("has_pv", default=False): sel.selector({"boolean": {}}),
                 }
             ),
             errors=errors,
@@ -108,13 +109,15 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required("host", default=current_data.get("host", "")): str,
-                vol.Required("username", default=current_data.get("username", "")): str,
-                vol.Required("password", default=current_data.get("password", "")): str,
-                vol.Required("inverter_sn", default=current_data.get("inverter_sn", "")): str,
-                vol.Required("email", default=current_data.get("email", "")): str,
-                vol.Required("has_pv", default=current_data.get("has_pv", False)): bool,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("host", default=current_data.get("host", "")): sel.selector({"text": {}}),
+                    vol.Required("username", default=current_data.get("username", "")): sel.selector({"text": {}}),
+                    vol.Required("password", default=current_data.get("password", "")): sel.selector({"text": {"type": "password"}}),
+                    vol.Required("inverter_sn", default=current_data.get("inverter_sn", "")): sel.selector({"text": {}}),
+                    vol.Required("email", default=current_data.get("email", "")): sel.selector({"text": {}}),
+                    vol.Required("has_pv", default=current_data.get("has_pv", False)): sel.selector({"boolean": {}}),
+                }
+            ),
             errors=errors,
         )
