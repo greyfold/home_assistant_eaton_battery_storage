@@ -121,6 +121,36 @@ The available documentation provides 4 steps to setup an Eaton xStorage Hybrid u
 | button | - | Mark All Notifications Read | - |
 | button | - | Stop Current Operation | - |
 
+### Notifications sensor
+
+The integration exposes a sensor named "Notifications" (entity_id typically `sensor.notifications`).
+
+- State: the number of notifications currently returned by the inverter
+- Attributes: a notifications array with entries containing `alert_id`, `level`, `type`, `sub_type`, `status`, `created_at`, and `updated_at` (plus `total`, `start`, and `size` for pagination)
+
+Example (attributes in Home Assistant):
+
+```yaml
+notifications:
+	- alert_id: 5d1b55e4-1e3b-403f-86dc-564e5b1a2191
+		level: INFO
+		type: DEVICES
+		sub_type: BATTERY_VOLTAGE_HIGH
+		status: NORMAL
+		created_at: 1754724228000
+		updated_at: 1754724228000
+	- alert_id: 84221498-96aa-4e0c-9649-d7a4d71bf5c7
+		level: CRITICAL
+		type: DEVICES
+		sub_type: BATTERY_VOLTAGE_HIGH
+		status: READ
+		created_at: 1754656076000
+		updated_at: 1754692437000
+total: 2
+start: 0
+size: 2
+```
+
 ## Examples
 
 Example Home Assistant automations are provided in the `examples/` folder:
