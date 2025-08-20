@@ -28,32 +28,21 @@ class EatonXStorageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             email = user_input["email"]
             has_pv = user_input["has_pv"]
 
-            # Validate credentials using current API (customer login).
-            # Technician fields are stored and used by the expanded API in a separate PR.
             api = EatonBatteryAPI(
                 hass=self.hass,
                 host=host,
                 username=username,
                 password=password,
+                inverter_sn=inverter_sn,
+                email=email,
                 app_id="com.eaton.xstoragehome",
                 name="Eaton xStorage Home",
-                manufacturer="Eaton",
+                manufacturer="Eaton"
             )
 
             try:
                 await api.connect()
-                # Store all fields including technician details and has_pv for later use
-                return self.async_create_entry(
-                    title="Eaton xStorage",
-                    data={
-                        "host": host,
-                        "username": username,
-                        "password": password,
-                        "inverter_sn": inverter_sn,
-                        "email": email,
-                        "has_pv": has_pv,
-                    },
-                )
+                return self.async_create_entry(title="Eaton xStorage", data=user_input)
             except ValueError as e:
                 _LOGGER.warning(f"Authentication failed: {e}")
                 errors["base"] = "auth"
@@ -89,12 +78,14 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
-            # Validate connection with current API (customer login) for now
+            # Test connection with new credentials
             api = EatonBatteryAPI(
                 hass=self.hass,
                 host=user_input["host"],
                 username=user_input["username"],
                 password=user_input["password"],
+                inverter_sn=user_input["inverter_sn"],
+                email=user_input["email"],
                 app_id="com.eaton.xstoragehome",
                 name="Eaton xStorage Home",
                 manufacturer="Eaton",
@@ -102,7 +93,7 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
 
             try:
                 await api.connect()
-                # Update the config entry with new data (including technician fields)
+                # Update the config entry with new data
                 self.hass.config_entries.async_update_entry(self.config_entry, data=user_input)
                 return self.async_create_entry(title="", data={})
             except ValueError as e:
@@ -113,19 +104,17 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
                 errors["base"] = "cannot_connect"
 
         # Get current values from config entry
-        current = self.config_entry.data
+        current_data = self.config_entry.data
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("host", default=current.get("host", "")): str,
-                    vol.Required("username", default=current.get("username", "")): str,
-                    vol.Required("password", default=current.get("password", "")): str,
-                    vol.Required("inverter_sn", default=current.get("inverter_sn", "")): str,
-                    vol.Required("email", default=current.get("email", "")): str,
-                    vol.Required("has_pv", default=current.get("has_pv", False)): bool,
-                }
-            ),
+            data_schema=vol.Schema({
+                vol.Required("host", default=current_data.get("host", "")): str,
+                vol.Required("username", default=current_data.get("username", "")): str,
+                vol.Required("password", default=current_data.get("password", "")): str,
+                vol.Required("inverter_sn", default=current_data.get("inverter_sn", "")): str,
+                vol.Required("email", default=current_data.get("email", "")): str,
+                vol.Required("has_pv", default=current_data.get("has_pv", False)): bool,
+            }),
             errors=errors,
         )

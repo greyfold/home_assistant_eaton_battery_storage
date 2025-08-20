@@ -10,13 +10,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN]["coordinator"]
     entities = [
         EatonXStorageMarkNotificationsReadButton(coordinator),
-        EatonXStorageStopCurrentOperationButton(coordinator),
+        EatonXStorageStopCurrentOperationButton(coordinator)
     ]
     async_add_entities(entities)
 
 class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
     """Button to mark all notifications as read."""
-
+    
     def __init__(self, coordinator):
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -39,20 +39,15 @@ class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
 
     @property
     def device_info(self):
-        return getattr(self.coordinator, "device_info", None) or {
-            "identifiers": {(DOMAIN, self.coordinator.api.host)},
-            "name": "Eaton xStorage Home",
-            "manufacturer": "Eaton",
-            "model": "xStorage Home",
-            "entry_type": "service",
-            "configuration_url": f"https://{self.coordinator.api.host}",
-        }
+        return self.coordinator.device_info
 
     async def async_press(self):
+        """Mark all notifications as read."""
         try:
             result = await self.coordinator.api.mark_all_notifications_read()
             if result.get("successful"):
-                _LOGGER.info("Marked all notifications as read")
+                _LOGGER.info("Successfully marked all notifications as read")
+                # Trigger coordinator update to refresh notification data
                 await self.coordinator.async_request_refresh()
             else:
                 _LOGGER.error(f"Failed to mark notifications as read: {result}")
@@ -66,7 +61,7 @@ class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
 
 class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
     """Button to stop/cancel current operation by setting to basic mode."""
-
+    
     def __init__(self, coordinator):
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -89,28 +84,29 @@ class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
 
     @property
     def device_info(self):
-        return getattr(self.coordinator, "device_info", None) or {
-            "identifiers": {(DOMAIN, self.coordinator.api.host)},
-            "name": "Eaton xStorage Home",
-            "manufacturer": "Eaton",
-            "model": "xStorage Home",
-            "entry_type": "service",
-            "configuration_url": f"https://{self.coordinator.api.host}",
-        }
+        return self.coordinator.device_info
 
     async def async_press(self):
+        """Stop current operation by setting to basic mode."""
         try:
             import asyncio
+            
+            # Send SET_BASIC_MODE command with minimal duration (1 hour)
             result = await self.coordinator.api.send_device_command("SET_BASIC_MODE", 1, {})
+            
             if result.get("successful", result.get("result") is not None):
-                _LOGGER.info("Stopped current operation (basic mode)")
+                _LOGGER.info("Successfully stopped current operation - set to basic mode")
                 await asyncio.sleep(1)
             else:
-                _LOGGER.warning(f"Stop operation may not have succeeded: {result}")
+                _LOGGER.warning(f"Stop operation API call may not have succeeded: {result}")
                 await asyncio.sleep(1)
+            
+            # Trigger coordinator update to refresh current mode data
             await self.coordinator.async_request_refresh()
+            
         except Exception as e:
             _LOGGER.error(f"Error stopping current operation: {e}")
+            # Still refresh to get current state
             await self.coordinator.async_request_refresh()
 
     @property

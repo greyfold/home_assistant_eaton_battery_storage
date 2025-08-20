@@ -1,6 +1,17 @@
+"""
+Data update coordinator for Eaton xStorage Home battery integration.
+
+IMPORTANT ACCURACY WARNING:
+Power measurement data retrieved by this coordinator from the xStorage Home API
+has poor accuracy. Energy flow values (consumption, production, grid power, 
+load values) are typically 30% higher than actual measurements. This affects
+all power-related data in the coordinator's data structure under energyFlow,
+today, and last30daysEnergyFlow sections.
+"""
 import logging
 from datetime import timedelta
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.entity import DeviceInfo
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,6 +28,7 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator):
 
     @property
     def battery_level(self):
+        """Return the current battery level as a percentage."""
         try:
             return self.data.get("status", {}).get("energyFlow", {}).get("stateOfCharge")
         except Exception:
@@ -24,8 +36,10 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator):
 
     @property
     def device_info(self):
+        """Return device information for this coordinator."""
         device_data = self.data.get("device", {}) if self.data else {}
-        info = {
+        
+        device_info = {
             "identifiers": {(DOMAIN, self.api.host)},
             "name": "Eaton xStorage Home",
             "manufacturer": "Eaton",
@@ -33,66 +47,50 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator):
             "entry_type": "service",
             "configuration_url": f"https://{self.api.host}",
         }
+        
+        # Add detailed device information if available
         if device_data:
+            # Add firmware version (software version)
             if "firmwareVersion" in device_data:
-                info["sw_version"] = device_data["firmwareVersion"]
+                device_info["sw_version"] = device_data["firmwareVersion"]
+            
+            # Add more specific model name if available
             if "inverterModelName" in device_data:
-                info["model"] = f"xStorage Home ({device_data['inverterModelName']})"
+                device_info["model"] = f"xStorage Home ({device_data['inverterModelName']})"
+            
+            # Add serial number if available (inverter serial as primary identifier)
             if "inverterSerialNumber" in device_data:
-                info["serial_number"] = device_data["inverterSerialNumber"]
-                info["identifiers"].add((DOMAIN, device_data["inverterSerialNumber"]))
+                device_info["serial_number"] = device_data["inverterSerialNumber"]
+                # Also add as an additional identifier
+                device_info["identifiers"].add((DOMAIN, device_data["inverterSerialNumber"]))
+            
+            # Add hardware version (BMS firmware version)
             if "bmsFirmwareVersion" in device_data:
-                info["hw_version"] = device_data["bmsFirmwareVersion"]
-        return info
+                device_info["hw_version"] = device_data["bmsFirmwareVersion"]
+        
+        return device_info
 
     async def _async_update_data(self):
         try:
-            # Fetch multiple endpoints; tolerate failures for tech-only ones
+            # Fetch all endpoints in parallel
             results = {}
             status = await self.api.get_status()
-            device = None
-            config_state = None
-            settings = None
-            metrics = None
-            metrics_daily = None
-            schedule = None
-            technical_status = None
-            maintenance_diagnostics = None
-
-            try:
-                device = await self.api.get_device()
-            except Exception:
-                pass
-            try:
-                config_state = await self.api.get_config_state()
-            except Exception:
-                pass
-            try:
-                settings = await self.api.get_settings()
-            except Exception:
-                pass
-            try:
-                metrics = await self.api.get_metrics()
-            except Exception:
-                pass
-            try:
-                metrics_daily = await self.api.get_metrics_daily()
-            except Exception:
-                pass
-            try:
-                schedule = await self.api.get_schedule()
-            except Exception:
-                pass
+            device = await self.api.get_device()
+            config_state = await self.api.get_config_state()
+            settings = await self.api.get_settings()
+            metrics = await self.api.get_metrics()
+            metrics_daily = await self.api.get_metrics_daily()
+            schedule = await self.api.get_schedule()
+            # The following may require technician account, handle errors gracefully
             try:
                 technical_status = await self.api.get_technical_status()
             except Exception:
-                pass
+                technical_status = None
             try:
                 maintenance_diagnostics = await self.api.get_maintenance_diagnostics()
             except Exception:
-                pass
+                maintenance_diagnostics = None
 
-            # Build combined data; keep legacy compatibility where possible
             results["status"] = status.get("result", {}) if status else {}
             results["device"] = device.get("result", {}) if device else {}
             results["config_state"] = config_state if config_state else {}
@@ -103,25 +101,16 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator):
             results["technical_status"] = technical_status.get("result", {}) if technical_status else {}
             results["maintenance_diagnostics"] = maintenance_diagnostics.get("result", {}) if maintenance_diagnostics else {}
 
-            # Notifications
+            # Fetch notification data
             try:
                 notifications = await self.api.get_notifications()
                 unread_count = await self.api.get_unread_notifications_count()
             except Exception:
                 notifications = None
                 unread_count = None
+            
             results["notifications"] = notifications.get("result", {}) if notifications else {}
             results["unread_notifications_count"] = unread_count.get("result", {}) if unread_count else {}
-
-            # Legacy compatibility: expose some status keys at root for sensors using top-level access
-            try:
-                if isinstance(results.get("status"), dict):
-                    # Merge selected subtrees for backward-compat sensors that expect root keys
-                    for key in ("energyFlow", "today", "last30daysEnergyFlow"):
-                        if key in results["status"] and key not in results:
-                            results[key] = results["status"][key]
-            except Exception:
-                pass
 
             return results
         except Exception as err:
