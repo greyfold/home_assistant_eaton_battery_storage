@@ -8,7 +8,7 @@
 
     ![Add custom integration](https://raw.githubusercontent.com/greyfold/home_assistant_eaton_xstorage_home/refs/heads/main/images/hacs-link-custom-repository.png "Add custom integration")
 
-- Enter the URL `https://github.com/greyfold/home_assistant_eaton_battery_storage` in the **Repository** field and select **Integration** as a type, then click on **Add**.
+- Enter the URL of this repository in the **Repository** field and select **Integration** as a type, then click on **Add**.
 
     ![Install Eaton Battery Storage](https://raw.githubusercontent.com/greyfold/home_assistant_eaton_xstorage_home/refs/heads/main/images/hacs-set-custom-repository.png "Install Eaton Battery Storage")
 
