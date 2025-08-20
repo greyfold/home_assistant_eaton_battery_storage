@@ -47,7 +47,6 @@ class EatonBatteryAPI:
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(url, json=payload, ssl=False) as response:
-                    # Prefer JSON response when available
                     if response.content_type == "application/json":
                         result = await response.json()
                     else:
@@ -65,10 +64,10 @@ class EatonBatteryAPI:
                         err_msg = err.get("description") or err.get("errCode") or "Authentication failed"
                         raise ValueError(err_msg)
                     else:
-                        _LOGGER.warning("Authentication failed: %s", result)
+                        _LOGGER.warning(f"Authentication failed: {result}")
                         raise ValueError("Authentication failed with unexpected response.")
             except Exception as e:
-                _LOGGER.error("Error during authentication: %s", e)
+                _LOGGER.error(f"Error during authentication: {e}")
                 raise
 
     async def store_token(self):
@@ -116,7 +115,7 @@ class EatonBatteryAPI:
                         headers["Authorization"] = f"Bearer {self.access_token}"
                         kwargs["headers"] = headers
                         async with session.request(method, url, **kwargs) as retry_response:
-                            if retry_response.content_type == "application/json":
+                            if retry_response.content_type == 'application/json':
                                 return await retry_response.json()
                             else:
                                 text_response = await retry_response.text()
@@ -184,12 +183,20 @@ class EatonBatteryAPI:
 
     async def set_device_power(self, state: bool):
         """Control the power state of the device (on/off)."""
-        payload = {"parameters": {"state": state}}
+        payload = {
+            "parameters": {
+                "state": state
+            }
+        }
         return await self.make_request("POST", "/api/device/power", json=payload)
 
     async def send_device_command(self, command: str, duration: int, parameters: dict = None):
         """Send a command to the device via POST /api/device/command."""
-        payload = {"command": command, "duration": duration, "parameters": parameters or {}}
+        payload = {
+            "command": command,
+            "duration": duration,
+            "parameters": parameters or {}
+        }
         _LOGGER.debug(f"Sending device command: {json.dumps(payload, separators=(',', ':'))}")
         return await self.make_request("POST", "/api/device/command", json=payload)
 

@@ -1,0 +1,40 @@
+alias: Eaton xStorage - notify on new alert and mark read
+id: eaton_xstorage_notify_on_event_mark_read
+mode: single
+
+trigger:
+  - platform: event
+    # The EventEntity emits events of this type
+    event_type: notification
+    # Ensure we only react to the Eaton xStorage notifications event entity
+    event_data:
+      entity_id: event.eaton_xstorage_notifications_event
+
+# Optional: only handle critical alerts
+# condition:
+#   - condition: template
+#     value_template: "{{ (trigger.event.data.alert.level | default('')).upper() == 'CRITICAL' }}"
+
+action:
+  - variables:
+      alert: "{{ trigger.event.data.alert }}"
+
+  # Show a persistent notification in Home Assistant UI
+  - service: persistent_notification.create
+    data:
+      title: >-
+        Eaton xStorage Alert: {{ alert.level | default('UNKNOWN') }}
+      message: >-
+        Type: {{ alert.type | default('N/A') }} / {{ alert.subType | default(alert.sub_type | default('N/A')) }}\n
+        Status: {{ alert.status | default('N/A') }}\n
+        Alert ID: {{ alert.alertId | default(alert.alert_id | default('N/A')) }}\n
+        Created: {{ alert.createdAt | default(alert.created_at | default('')) }}\n
+        Updated: {{ alert.updatedAt | default(alert.updated_at | default('')) }}
+
+  # Small delay to avoid racing with backend updates
+  - delay: "00:00:02"
+
+  # Mark all notifications as read using the provided button entity
+  - service: button.press
+    target:
+      entity_id: button.eaton_xstorage_mark_notifications_read

@@ -157,5 +157,6 @@ Example Home Assistant automations are provided in the `examples/` folder:
 
 - `examples/example_home_assistant_automation_meter_emulator.yaml` — publish real-time meter data to the inverter (MQTT) with safety limits and accuracy warning
 - `examples/example_home_assistant_automation_octopus_go_intelligent_dispatching.yaml` — smart daytime charging driven by Octopus Intelligent Go dispatch windows
+- `examples/example_home_assistant_automation_notifications_event.yaml` — react to new inverter alerts via EventEntity and mark notifications read
 
 These examples use registry `device_id` and `entity_id` values for stability across renames; update them to match your setup and see inline comments for guidance.
