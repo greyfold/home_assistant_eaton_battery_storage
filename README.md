@@ -1,55 +1,42 @@
-# Eaton Battery Storage for Home Assistant
-Integrate your Eaton xStorage Home (Tiida) to home assistant with the local API.
+# Home Assistant Eaton xStorage Home Battery Integration
 
-## Pre-requisite
-- A Home Assistant Gateway
-- An Eaton xStorage Home (Tiida)
-- A local network
-- A GitHub account
+A Home Assistant custom component for integrating Eaton xStorage Home battery systems.
 
-Please make sure to setup all your devices on the same network.
+> ⚠️ This project is not affiliated with or endorsed by Eaton. Use at your own risk.
 
-Useful links:
-- [Get started with home assistant](https://www.home-assistant.io/installation/)
-- [xStorage Home User Manual](https://www.eaton.com/content/dam/eaton/products/energy-storage/xstorage-home/en-gb/eaton-xstorage-home-user-interface-manual-en-gb.pdf)
+## Attribution
 
-## Documentation
+This project is based on the excellent work by [greyfold](https://github.com/greyfold) in the [home_assistant_eaton_battery_storage](https://github.com/greyfold/home_assistant_eaton_battery_storage) repository. While this integration has been significantly enhanced and restructured, we acknowledge and appreciate the foundational work that made this project possible.
 
-The available documentation provides 4 steps to setup an Eaton xStorage Hybrid unit with a Home Assistant device through local APIs.
+## Features
 
-- xStorage Home setup
-- Setup Home Assistant
-- HACS installation and configuration
-- Eaton Battery Storage installation and configuration
+- Real-time monitoring of battery status and energy flow
+- Control charging/discharging modes
+- Monitor PV production and grid consumption
+- Energy saving mode configuration
+- Notifications and alerts management
+- Technical status monitoring
 
-<a href="https://greyfold.github.io/home_assistant_eaton_battery_storage/" class="Button--primary Button--small Button">
-    <span class="Button-content">
-        <span class="Button-label">Read the documentation</span>
-    </span>
-</a>
+## API Documentation
 
+This integration is based on the reverse-engineered REST API of the Eaton xStorage Home system. For detailed API documentation including all endpoints, authentication, and response formats, see:
 
-## Available Metrics
+**xStorage Home REST API Documentation:** <https://github.com/genestealer/eaton-xstorage-home-api-doc/>
 
-All those metrics are provided by the xStorage Home API.
+## Important Accuracy Warning
 
-| Metric       | Description                                                                 |
-|--------------|-----------------------------------------------------------------------------|
-| `temp`       | Inverter temperature (°C)                                                   |
-| `etoday`     | Energy produced today (Wh or kWh, depending on system)                      |
-| `vbat`       | Battery voltage (V)                                                         |
-| `ibat`       | Battery current (A)                                                         |
-| `mtf`        | Minutes to full charge (min)                                                |
-| `vpv1`       | PV1 voltage (V)                                                             |
-| `ipv1`       | PV1 current (A)                                                             |
-| `iac`        | Inverter AC output current (A)                                              |
-| `fac`        | Inverter output frequency (Hz)                                              |
-| `pac`        | Inverter output power (W)                                                   |
-| `pload`      | Power consumed by critical loads (W)                                        |
-| `etotal`     | Total energy produced (Wh or kWh)                                           |
-| `htotal`     | Total operating hours                                                       |
-| `edraw`      | Energy drawn from the grid (Wh or kWh)                                      |
-| `grid_code`  | Grid configuration code (region-specific settings)                          |
-| `vbus`       | DC bus voltage (V)                                                          |
-| `vpv2`       | PV2 voltage (V) (if supported by firmware)                                  |
-| `ipv2`       | PV2 current (A) (if supported by firmware)                                  |
+> ⚠️ Inverter Power Measurement Accuracy: The built-in inverter energy monitoring has poor accuracy and typically reports power output/consumption values approximately 30% higher than actual values. Do not rely on consumption and production metrics from the inverter for accurate energy calculations. This affects all power-related sensors including grid power, load values, PV production, and consumption metrics.
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in Home Assistant
+2. Click on "Integrations"
+3. Click the three dots in the top right corner
+4. Select "Custom repositories"
+5. Add this repository URL: `https://github.com/Genestealer/homeassistant-eaton-xstorage-home-battery-integration`
+6. Select "Integration" as the category
+7. Click "Add"
+8. Click "Install"
+9. Restart Home Assistant
