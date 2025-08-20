@@ -34,7 +34,7 @@ This integration is based on the reverse-engineered REST API of the Eaton xStora
 2. Click on "Integrations"
 3. Click the three dots in the top right corner
 4. Select "Custom repositories"
-5. Add this repository URL: `https://github.com/greyfold/home_assistant_eaton_battery_storage`
+5. Add this repository URL.
 6. Select "Integration" as the category
 7. Click "Add"
 8. Click "Install"
