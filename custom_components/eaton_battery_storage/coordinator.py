@@ -113,6 +113,16 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator):
             results["notifications"] = notifications.get("result", {}) if notifications else {}
             results["unread_notifications_count"] = unread_count.get("result", {}) if unread_count else {}
 
+            # Legacy compatibility: expose some status keys at root for sensors using top-level access
+            try:
+                if isinstance(results.get("status"), dict):
+                    # Merge selected subtrees for backward-compat sensors that expect root keys
+                    for key in ("energyFlow", "today", "last30daysEnergyFlow"):
+                        if key in results["status"] and key not in results:
+                            results[key] = results["status"][key]
+            except Exception:
+                pass
+
             return results
         except Exception as err:
             raise UpdateFailed(f"Error fetching data: {err}")
