@@ -161,7 +161,31 @@ class EatonBatteryAPI:
         return await self.make_request("GET", "/api/device/maintenance/diagnostics")
 
     async def get_notifications(self, status=None, size=None, offset=None):
-        """Get notifications with optional filtering (defaults to NORMAL)."""
+        """Get notifications.
+
+        Backward compatible behavior:
+        - If no filters provided, fetch unread count, then fetch that many device notifications,
+          mark all as read, and return a list (not a dict).
+        - If filters provided, return the raw JSON dict from the notifications endpoint.
+        """
+        if status is None and size is None and offset is None:
+            try:
+                unread_json = await self.make_request("GET", "/api/notifications/unread")
+                unread_count = int(unread_json.get("result", {}).get("total", 0)) if unread_json else 0
+                if unread_count <= 0:
+                    return []
+                response_json = await self.make_request(
+                    "GET",
+                    "/api/device/notifications",
+                    params={"status": "NORMAL", "offset": 0, "size": unread_count},
+                )
+                # Best-effort mark as read
+                await self.make_request("POST", "/api/notifications/read/all")
+                return response_json.get("result", []) if isinstance(response_json, dict) else []
+            except Exception as e:
+                _LOGGER.error("Failed to fetch notifications (legacy mode): %s", e)
+                return []
+
         params = {}
         if status:
             params["status"] = status
@@ -169,9 +193,7 @@ class EatonBatteryAPI:
             params["size"] = size
         if offset is not None:
             params["offset"] = offset
-        # Default to device notifications if no filters provided
-        endpoint = "/api/notifications/" if params else "/api/device/notifications"
-        return await self.make_request("GET", endpoint, params=params or None)
+        return await self.make_request("GET", "/api/notifications/", params=params)
 
     async def get_unread_notifications_count(self):
         return await self.make_request("GET", "/api/notifications/unread")
