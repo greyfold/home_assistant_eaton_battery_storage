@@ -49,14 +49,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 
 class EatonXStorageNotification(EventEntity):
-    _attr_event_types = []
+    EVENT_TYPE = "xstorage_notification"
+    _attr_event_types = [EVENT_TYPE]
 
     def __init__(self, api):
         self._api = api
 
     @callback
     def _async_handle_event(self, event):
-        self._trigger_event(event)
+        self._trigger_event(EVENT_TYPE, event)
         self.async_write_ha_state()
 
     async def async_update(self):
