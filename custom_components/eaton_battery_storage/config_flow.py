@@ -25,14 +25,16 @@ class EatonXStorageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         errors = {}
+        error_code = None
 
         if user_input is not None:
             host = user_input["host"]
             username = user_input["username"]
             password = user_input["password"]
             inverter_sn = user_input["inverter_sn"]
-            email = user_input["email"]
-            has_pv = user_input["has_pv"]
+            # Hardcode the email address
+            email = "anything@anything.com"
+            # has_pv is not used directly, but is included in entry_data
 
             api = EatonBatteryAPI(
                 hass=self.hass,
@@ -48,13 +50,18 @@ class EatonXStorageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             try:
                 await api.connect()
-                return self.async_create_entry(title="Eaton xStorage", data=user_input)
+                # Save the hardcoded email in the config entry for consistency
+                entry_data = dict(user_input)
+                entry_data["email"] = email
+                return self.async_create_entry(title="Eaton xStorage", data=entry_data)
             except ValueError as e:
                 _LOGGER.warning(f"Authentication failed: {e}")
-                errors["base"] = "auth"
+                error_code = str(e)
+                errors["base"] = error_code
             except Exception as e:
                 _LOGGER.error(f"Unexpected error: {e}")
-                errors["base"] = "cannot_connect"
+                error_code = str(e)
+                errors["base"] = error_code or "cannot_connect"
 
         return self.async_show_form(
             step_id="user",
@@ -66,7 +73,8 @@ class EatonXStorageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         {"text": {"type": "password"}}
                     ),
                     vol.Required("inverter_sn"): sel.selector({"text": {}}),
-                    vol.Required("email"): sel.selector({"text": {}}),
+                    # Hide the email field from the user, but keep it in the config entry
+                    # vol.Required("email"): sel.selector({"text": {}}),
                     vol.Required("has_pv", default=False): sel.selector(
                         {"boolean": {}}
                     ),
@@ -88,14 +96,14 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
-            # Test connection with new credentials
+            # Test connection with new credentials, use hardcoded email
             api = EatonBatteryAPI(
                 hass=self.hass,
                 host=user_input["host"],
                 username=user_input["username"],
                 password=user_input["password"],
                 inverter_sn=user_input["inverter_sn"],
-                email=user_input["email"],
+                email="anything@anything.com",
                 app_id="com.eaton.xstoragehome",
                 name="Eaton xStorage Home",
                 manufacturer="Eaton",
@@ -103,9 +111,11 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
 
             try:
                 await api.connect()
-                # Update the config entry with new data
+                # Update the config entry with new data, but do not store email
+                entry_data = dict(user_input)
+                entry_data.pop("email", None)
                 self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=user_input
+                    self.config_entry, data=entry_data
                 )
                 return self.async_create_entry(title="", data={})
             except ValueError as e:
@@ -133,9 +143,6 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
                     ): sel.selector({"text": {"type": "password"}}),
                     vol.Required(
                         "inverter_sn", default=current_data.get("inverter_sn", "")
-                    ): sel.selector({"text": {}}),
-                    vol.Required(
-                        "email", default=current_data.get("email", "")
                     ): sel.selector({"text": {}}),
                     vol.Required(
                         "has_pv", default=current_data.get("has_pv", False)
