@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.binary_sensor import (
