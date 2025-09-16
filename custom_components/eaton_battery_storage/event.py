@@ -1,14 +1,20 @@
+"""Eaton battery storage event platform."""
+
 import logging
+
 from homeassistant.components.event import EventEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN]["coordinator"]
     async_add_entities([EatonXStorageNotificationEvent(coordinator)])
+
 
 class EatonXStorageNotificationEvent(CoordinatorEntity, EventEntity):
     """Event entity that emits an event when new unread notifications are detected."""
@@ -40,7 +46,11 @@ class EatonXStorageNotificationEvent(CoordinatorEntity, EventEntity):
         return self.coordinator.device_info
 
     def _extract_alerts(self):
-        data = self.coordinator.data.get("notifications", {}) if self.coordinator.data else {}
+        data = (
+            self.coordinator.data.get("notifications", {})
+            if self.coordinator.data
+            else {}
+        )
         results = data.get("results", [])
         # Normalize to list of dicts with alertId
         alerts = []
@@ -94,7 +104,9 @@ class EatonXStorageNotificationEvent(CoordinatorEntity, EventEntity):
         try:
             unread = 0
             if self.coordinator and self.coordinator.data:
-                unread_data = self.coordinator.data.get("unread_notifications_count", {})
+                unread_data = self.coordinator.data.get(
+                    "unread_notifications_count", {}
+                )
                 # unread endpoint returns {"total": <int>}
                 if isinstance(unread_data, dict):
                     unread = int(unread_data.get("total", 0) or 0)

@@ -11,30 +11,24 @@ POWER_ACCURACY_WARNING = (
 CURRENT_MODE_COMMAND_MAP = {
     "SET_CHARGE": "Charge",
     "SET_BASIC_MODE": "Basic Mode",
-    "SET_DISCHARGE": "Discharge", 
+    "SET_DISCHARGE": "Discharge",
     "SET_MAXIMIZE_AUTO_CONSUMPTION": "Maximize Auto Consumption",
     "SET_VARIABLE_GRID_INJECTION": "Variable Grid Injection",
     "SET_FREQUENCY_REGULATION": "Frequency Regulation",
-    "SET_PEAK_SHAVING": "Peak Shaving"
+    "SET_PEAK_SHAVING": "Peak Shaving",
 }
 
 # Current Mode Action mapping for human-readable display
-CURRENT_MODE_ACTION_MAP = {
-    "ACTION_CHARGE": "Charge",
-    "ACTION_DISCHARGE": "Discharge"
-}
+CURRENT_MODE_ACTION_MAP = {"ACTION_CHARGE": "Charge", "ACTION_DISCHARGE": "Discharge"}
 
-# Current Mode Type mapping for human-readable display  
-CURRENT_MODE_TYPE_MAP = {
-    "MANUAL": "Manual",
-    "SCHEDULE": "Scheduled"
-}
+# Current Mode Type mapping for human-readable display
+CURRENT_MODE_TYPE_MAP = {"MANUAL": "Manual", "SCHEDULE": "Scheduled"}
 
 # Current Mode Recurrence mapping for human-readable display
 CURRENT_MODE_RECURRENCE_MAP = {
     "MANUAL_EVENT": "Manual Event",
     "DAILY": "Daily",
-    "WEEKLY": "Weekly"
+    "WEEKLY": "Weekly",
 }
 
 # Operation Mode mapping for human-readable display
@@ -46,16 +40,16 @@ OPERATION_MODE_MAP = {
     "MAXIMIZE_AUTO_CONSUMPTION": "Maximize Auto Consumption",
     # Additional possible values that might appear in technical status
     "BAT_CHARGING": "Charging",
-    "BAT_DISCHARGING": "Discharging", 
+    "BAT_DISCHARGING": "Discharging",
     "BAT_IDLE": "Idle",
     "UNKNOWN": "Unknown",
     "OFF": "Off",
-    "FAULT": "Fault"
+    "FAULT": "Fault",
 }
 
 # BMS State mapping for human-readable display
 BMS_STATE_MAP = {
     "BAT_CHARGING": "Charging",
-    "BAT_DISCHARGING": "Discharging", 
-    "BAT_IDLE": "Idle"
+    "BAT_DISCHARGING": "Discharging",
+    "BAT_IDLE": "Idle",
 }

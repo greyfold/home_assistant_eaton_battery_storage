@@ -1,13 +1,15 @@
+"""Binary sensors for Eaton Battery Storage integration."""
+
 import logging
+
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
     BinarySensorDeviceClass,
+    BinarySensorEntity,
 )
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import DOMAIN
-
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ BINARY_SENSOR_TYPES = {
     },
 }
 
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN]["coordinator"]
     entities = [
@@ -41,6 +44,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         for key, description in BINARY_SENSOR_TYPES.items()
     ]
     async_add_entities(entities)
+
 
 class EatonXStorageBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, coordinator, key, description):
@@ -63,16 +67,26 @@ class EatonXStorageBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def is_on(self):
         try:
             if self._key == "status.energyFlow.batteryStatus_charging":
-                value = self.coordinator.data.get("status", {}).get("energyFlow", {}).get("batteryStatus", None)
+                value = (
+                    self.coordinator.data.get("status", {})
+                    .get("energyFlow", {})
+                    .get("batteryStatus", None)
+                )
                 return value == "BAT_CHARGING"
-            elif self._key == "status.energyFlow.batteryStatus_discharging":
-                value = self.coordinator.data.get("status", {}).get("energyFlow", {}).get("batteryStatus", None)
+            if self._key == "status.energyFlow.batteryStatus_discharging":
+                value = (
+                    self.coordinator.data.get("status", {})
+                    .get("energyFlow", {})
+                    .get("batteryStatus", None)
+                )
                 return value == "BAT_DISCHARGING"
-            elif self._key == "device.powerState":
+            if self._key == "device.powerState":
                 value = self.coordinator.data.get("device", {}).get("powerState", None)
                 return bool(value)
-            elif self._key == "notifications.has_unread":
-                unread_count = self.coordinator.data.get("unread_notifications_count", {}).get("total", 0)
+            if self._key == "notifications.has_unread":
+                unread_count = self.coordinator.data.get(
+                    "unread_notifications_count", {}
+                ).get("total", 0)
                 return unread_count > 0
             return False
         except Exception as e:

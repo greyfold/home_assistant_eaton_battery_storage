@@ -1,22 +1,28 @@
+"""Button platform for Eaton Battery Storage integration."""
+
 import logging
+
 from homeassistant.components.button import ButtonEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN]["coordinator"]
     entities = [
         EatonXStorageMarkNotificationsReadButton(coordinator),
-        EatonXStorageStopCurrentOperationButton(coordinator)
+        EatonXStorageStopCurrentOperationButton(coordinator),
     ]
     async_add_entities(entities)
 
+
 class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
     """Button to mark all notifications as read."""
-    
+
     def __init__(self, coordinator):
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -61,7 +67,7 @@ class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
 
 class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
     """Button to stop/cancel current operation by setting to basic mode."""
-    
+
     def __init__(self, coordinator):
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -90,20 +96,26 @@ class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
         """Stop current operation by setting to basic mode."""
         try:
             import asyncio
-            
+
             # Send SET_BASIC_MODE command with minimal duration (1 hour)
-            result = await self.coordinator.api.send_device_command("SET_BASIC_MODE", 1, {})
-            
+            result = await self.coordinator.api.send_device_command(
+                "SET_BASIC_MODE", 1, {}
+            )
+
             if result.get("successful", result.get("result") is not None):
-                _LOGGER.info("Successfully stopped current operation - set to basic mode")
+                _LOGGER.info(
+                    "Successfully stopped current operation - set to basic mode"
+                )
                 await asyncio.sleep(1)
             else:
-                _LOGGER.warning(f"Stop operation API call may not have succeeded: {result}")
+                _LOGGER.warning(
+                    f"Stop operation API call may not have succeeded: {result}"
+                )
                 await asyncio.sleep(1)
-            
+
             # Trigger coordinator update to refresh current mode data
             await self.coordinator.async_request_refresh()
-            
+
         except Exception as e:
             _LOGGER.error(f"Error stopping current operation: {e}")
             # Still refresh to get current state

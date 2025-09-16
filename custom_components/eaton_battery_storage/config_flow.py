@@ -1,9 +1,14 @@
+"""Config flow for Eaton xStorage Home integration."""
+
 import logging
+
 import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.helpers import selector as sel
-from .const import DOMAIN
+
 from .api import EatonBatteryAPI
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +43,7 @@ class EatonXStorageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 email=email,
                 app_id="com.eaton.xstoragehome",
                 name="Eaton xStorage Home",
-                manufacturer="Eaton"
+                manufacturer="Eaton",
             )
 
             try:
@@ -57,10 +62,14 @@ class EatonXStorageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required("host"): sel.selector({"text": {}}),
                     vol.Required("username"): sel.selector({"text": {}}),
-                    vol.Required("password"): sel.selector({"text": {"type": "password"}}),
+                    vol.Required("password"): sel.selector(
+                        {"text": {"type": "password"}}
+                    ),
                     vol.Required("inverter_sn"): sel.selector({"text": {}}),
                     vol.Required("email"): sel.selector({"text": {}}),
-                    vol.Required("has_pv", default=False): sel.selector({"boolean": {}}),
+                    vol.Required("has_pv", default=False): sel.selector(
+                        {"boolean": {}}
+                    ),
                 }
             ),
             errors=errors,
@@ -95,7 +104,9 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
             try:
                 await api.connect()
                 # Update the config entry with new data
-                self.hass.config_entries.async_update_entry(self.config_entry, data=user_input)
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=user_input
+                )
                 return self.async_create_entry(title="", data={})
             except ValueError as e:
                 _LOGGER.warning(f"Authentication failed: {e}")
@@ -111,12 +122,24 @@ class EatonXStorageOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required("host", default=current_data.get("host", "")): sel.selector({"text": {}}),
-                    vol.Required("username", default=current_data.get("username", "")): sel.selector({"text": {}}),
-                    vol.Required("password", default=current_data.get("password", "")): sel.selector({"text": {"type": "password"}}),
-                    vol.Required("inverter_sn", default=current_data.get("inverter_sn", "")): sel.selector({"text": {}}),
-                    vol.Required("email", default=current_data.get("email", "")): sel.selector({"text": {}}),
-                    vol.Required("has_pv", default=current_data.get("has_pv", False)): sel.selector({"boolean": {}}),
+                    vol.Required(
+                        "host", default=current_data.get("host", "")
+                    ): sel.selector({"text": {}}),
+                    vol.Required(
+                        "username", default=current_data.get("username", "")
+                    ): sel.selector({"text": {}}),
+                    vol.Required(
+                        "password", default=current_data.get("password", "")
+                    ): sel.selector({"text": {"type": "password"}}),
+                    vol.Required(
+                        "inverter_sn", default=current_data.get("inverter_sn", "")
+                    ): sel.selector({"text": {}}),
+                    vol.Required(
+                        "email", default=current_data.get("email", "")
+                    ): sel.selector({"text": {}}),
+                    vol.Required(
+                        "has_pv", default=current_data.get("has_pv", False)
+                    ): sel.selector({"boolean": {}}),
                 }
             ),
             errors=errors,

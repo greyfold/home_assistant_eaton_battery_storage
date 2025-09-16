@@ -1,9 +1,8 @@
-"""
-API client for Eaton xStorage Home battery integration.
+"""API client for Eaton xStorage Home battery integration.
 
 IMPORTANT ACCURACY WARNING:
 The xStorage Home inverter has poor energy monitoring accuracy. Power measurements
-(consumption, production, grid values, load values) are typically 30% higher than 
+(consumption, production, grid values, load values) are typically 30% higher than
 actual values. This affects all energy flow data returned by the API endpoints:
 - /api/device/status (energyFlow section)
 - /api/metrics and /api/metrics/daily
@@ -11,16 +10,31 @@ actual values. This affects all energy flow data returned by the API endpoints:
 
 Use external energy monitoring for accurate power measurements.
 """
-import aiohttp
-import logging
-import json
+
 from datetime import datetime, timedelta
+import json
+import logging
+
+import aiohttp
+
 from homeassistant.helpers.storage import Store
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class EatonBatteryAPI:
-    def __init__(self, hass, host, username, password, inverter_sn, email, app_id, name, manufacturer):
+    def __init__(
+        self,
+        hass,
+        host,
+        username,
+        password,
+        inverter_sn,
+        email,
+        app_id,
+        name,
+        manufacturer,
+    ):
         self.hass = hass
         self.host = host
         self.username = username
@@ -41,7 +55,7 @@ class EatonBatteryAPI:
             "pwd": self.password,
             "inverterSn": self.inverter_sn,
             "email": self.email,
-            "userType": "tech"
+            "userType": "tech",
         }
 
         async with aiohttp.ClientSession() as session:
@@ -51,30 +65,48 @@ class EatonBatteryAPI:
                         result = await response.json()
                     else:
                         text = await response.text()
-                        _LOGGER.error("Non-JSON auth response (%s): %s", response.status, text)
+                        _LOGGER.error(
+                            "Non-JSON auth response (%s): %s", response.status, text
+                        )
                         raise ValueError("Authentication failed: non-JSON response")
 
-                    if response.status == 200 and result.get("successful") and "token" in result.get("result", {}):
+                    if (
+                        response.status == 200
+                        and result.get("successful")
+                        and "token" in result.get("result", {})
+                    ):
                         self.access_token = result["result"]["token"]
-                        self.token_expiration = datetime.utcnow() + timedelta(minutes=55)
+                        self.token_expiration = datetime.utcnow() + timedelta(
+                            minutes=55
+                        )
                         await self.store_token()
                         _LOGGER.info("Connected successfully. Bearer token acquired.")
                     elif "error" in result:
                         err = result["error"]
-                        err_msg = err.get("description") or err.get("errCode") or "Authentication failed"
+                        err_msg = (
+                            err.get("description")
+                            or err.get("errCode")
+                            or "Authentication failed"
+                        )
                         raise ValueError(err_msg)
                     else:
                         _LOGGER.warning(f"Authentication failed: {result}")
-                        raise ValueError("Authentication failed with unexpected response.")
+                        raise ValueError(
+                            "Authentication failed with unexpected response."
+                        )
             except Exception as e:
                 _LOGGER.error(f"Error during authentication: {e}")
                 raise
 
     async def store_token(self):
-        await self.store.async_save({
-            "access_token": self.access_token,
-            "token_expiration": self.token_expiration.isoformat() if self.token_expiration else None
-        })
+        await self.store.async_save(
+            {
+                "access_token": self.access_token,
+                "token_expiration": self.token_expiration.isoformat()
+                if self.token_expiration
+                else None,
+            }
+        )
 
     async def load_token(self):
         data = await self.store.async_load()
@@ -89,7 +121,11 @@ class EatonBatteryAPI:
         await self.connect()
 
     async def ensure_token_valid(self):
-        if not self.access_token or not self.token_expiration or datetime.utcnow() >= self.token_expiration:
+        if (
+            not self.access_token
+            or not self.token_expiration
+            or datetime.utcnow() >= self.token_expiration
+        ):
             _LOGGER.info("Token missing or expired. Re-authenticating...")
             await self.refresh_token()
 
@@ -101,7 +137,7 @@ class EatonBatteryAPI:
         headers["Authorization"] = f"Bearer {self.access_token}"
         kwargs["headers"] = headers
         kwargs["ssl"] = False
-        
+
         # Add query parameters if provided
         if params:
             kwargs["params"] = params
@@ -114,22 +150,30 @@ class EatonBatteryAPI:
                         await self.refresh_token()
                         headers["Authorization"] = f"Bearer {self.access_token}"
                         kwargs["headers"] = headers
-                        async with session.request(method, url, **kwargs) as retry_response:
-                            if retry_response.content_type == 'application/json':
+                        async with session.request(
+                            method, url, **kwargs
+                        ) as retry_response:
+                            if retry_response.content_type == "application/json":
                                 return await retry_response.json()
-                            else:
-                                text_response = await retry_response.text()
-                                _LOGGER.error(f"Non-JSON response from {endpoint}: Status {retry_response.status}, Content: {text_response}")
-                                return {"successful": False, "error": text_response}
-                    
+                            text_response = await retry_response.text()
+                            _LOGGER.error(
+                                f"Non-JSON response from {endpoint}: Status {retry_response.status}, Content: {text_response}"
+                            )
+                            return {"successful": False, "error": text_response}
+
                     # Handle different response types
-                    if response.content_type == 'application/json':
+                    if response.content_type == "application/json":
                         return await response.json()
-                    else:
-                        text_response = await response.text()
-                        _LOGGER.error(f"Non-JSON response from {endpoint}: Status {response.status}, Content: {text_response}")
-                        return {"successful": False, "error": text_response, "status": response.status}
-                        
+                    text_response = await response.text()
+                    _LOGGER.error(
+                        f"Non-JSON response from {endpoint}: Status {response.status}, Content: {text_response}"
+                    )
+                    return {
+                        "successful": False,
+                        "error": text_response,
+                        "status": response.status,
+                    }
+
             except Exception as e:
                 _LOGGER.error(f"Error during API request to {endpoint}: {e}")
                 return {}
@@ -170,7 +214,7 @@ class EatonBatteryAPI:
             params["size"] = size
         if offset is not None:
             params["offset"] = offset
-        
+
         return await self.make_request("GET", "/api/notifications/", params=params)
 
     async def get_unread_notifications_count(self):
@@ -183,24 +227,26 @@ class EatonBatteryAPI:
 
     async def set_device_power(self, state: bool):
         """Control the power state of the device (on/off)."""
-        payload = {
-            "parameters": {
-                "state": state
-            }
-        }
+        payload = {"parameters": {"state": state}}
         return await self.make_request("POST", "/api/device/power", json=payload)
 
-    async def send_device_command(self, command: str, duration: int, parameters: dict = None):
+    async def send_device_command(
+        self, command: str, duration: int, parameters: dict = None
+    ):
         """Send a command to the device via POST /api/device/command."""
         payload = {
             "command": command,
             "duration": duration,
-            "parameters": parameters or {}
+            "parameters": parameters or {},
         }
-        _LOGGER.debug(f"Sending device command: {json.dumps(payload, separators=(',', ':'))}")
+        _LOGGER.debug(
+            f"Sending device command: {json.dumps(payload, separators=(',', ':'))}"
+        )
         return await self.make_request("POST", "/api/device/command", json=payload)
 
     async def update_settings(self, settings_data: dict):
         """Update device settings via PUT /api/settings."""
-        _LOGGER.debug(f"Sending settings update: {json.dumps(settings_data, separators=(',', ':'))}")
+        _LOGGER.debug(
+            f"Sending settings update: {json.dumps(settings_data, separators=(',', ':'))}"
+        )
         return await self.make_request("PUT", "/api/settings", json=settings_data)
