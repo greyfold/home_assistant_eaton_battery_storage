@@ -8,7 +8,6 @@
           "username": "Technician Username",
           "password": "Technician Password",
           "inverter_sn": "Inverter Serial Number",
-          "email": "Email Address",
           "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
         },
         "data_description": {
@@ -18,7 +17,13 @@
     },
     "error": {
       "cannot_connect": "Failed to connect to the device. Please check your network connection and device settings.",
-      "auth": "Authentication failed. Please check your technician credentials."
+      "invalid_auth": "Authentication failed. Please check your technician credentials.",
+      "err_invalid_inverter_sn": "Invalid inverter serial number.",
+      "err_wrong_credentials": "Wrong username or password.",
+      "Error during authentication: 10": "An error occurred. Your account was locked due to too many failed login attempts. You will be allowed to try again in 10 minutes.",
+      "Authentication failed with unexpected response.": "Authentication failed with unexpected response.",
+      "Authentication failed: non-JSON response": "Authentication failed: non-JSON response.",
+      "unknown": "Unexpected error occurred during setup."
     },
     "abort": {
       "single_instance_allowed": "Only a single instance is allowed."
@@ -33,7 +38,6 @@
           "username": "Technician Username",
           "password": "Technician Password",
           "inverter_sn": "Inverter Serial Number",
-          "email": "Email Address",
           "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
         },
         "data_description": {
@@ -43,7 +47,13 @@
     },
     "error": {
       "cannot_connect": "Failed to connect to the device. Please check your network connection and device settings.",
-      "auth": "Authentication failed. Please check your technician credentials."
+      "invalid_auth": "Authentication failed. Please check your technician credentials.",
+      "err_invalid_inverter_sn": "Invalid inverter serial number.",
+      "err_wrong_credentials": "Wrong username or password.",
+      "Error during authentication: 10": "An error occurred. Your account was locked due to too many failed login attempts. You will be allowed to try again in 10 minutes.",
+      "Authentication failed with unexpected response.": "Authentication failed with unexpected response.",
+      "Authentication failed: non-JSON response": "Authentication failed: non-JSON response.",
+      "unknown": "Unexpected error occurred during setup."
     }
   }
 }

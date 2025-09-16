@@ -7,11 +7,16 @@ Battery Storage system, including:
 - Battery backup level configuration
 """
 
+from __future__ import annotations
+
+import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
@@ -24,143 +29,161 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .number_constants import NUMBER_ENTITIES
 
+if TYPE_CHECKING:
+    from .coordinator import EatonBatteryStorageCoordinator
+
+    type EatonBatteryStorageConfigEntry = ConfigEntry[EatonBatteryStorageCoordinator]
+
+PARALLEL_UPDATES = 0
+
+_LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
-):
-    coordinator = hass.data[DOMAIN]["coordinator"]
+    hass: HomeAssistant,
+    entry: EatonBatteryStorageConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up Eaton Battery Storage number platform."""
+    coordinator = entry.runtime_data
+
+    # Setup storage for local number values (for percentage/watt conversions)
     store = Store(hass, 1, f"{DOMAIN}_number_values.json")
-    # Load stored values or initialize
     stored = await store.async_load() or {}
-    hass.data[DOMAIN]["number_values"] = stored
-    hass.data[DOMAIN]["number_store"] = store
-    entities = [
-        EatonBatteryNumberEntity(hass, coordinator, desc) for desc in NUMBER_ENTITIES
-    ]
-    # Add API-controlled settings entities
-    entities.append(EatonXStorageHouseConsumptionThresholdNumber(coordinator))
-    entities.append(EatonXStorageBatteryBackupLevelNumber(coordinator))
-    logging.getLogger(__name__).debug(
-        "Adding %d number entities (including House Consumption Threshold setter)",
-        len(entities),
+
+    # Store data directly on the coordinator for access by entities
+    if not hasattr(coordinator, "number_values"):
+        coordinator.number_values = stored
+    if not hasattr(coordinator, "number_store"):
+        coordinator.number_store = store
+
+    entities: list[NumberEntity] = []
+
+    # Add configurable number entities from constants
+    entities.extend(
+        EatonBatteryNumberEntity(coordinator, desc) for desc in NUMBER_ENTITIES
     )
 
-    # Register all entities for dispatcher updates
-    for entity in entities:
-        if hasattr(entity, "_all_entities"):
-            entity._all_entities = entities
+    # Add API-controlled settings entities
+    entities.extend(
+        [
+            EatonXStorageHouseConsumptionThresholdNumber(coordinator),
+            EatonXStorageBatteryBackupLevelNumber(coordinator),
+        ]
+    )
+
+    _LOGGER.debug("Adding %d number entities", len(entities))
     async_add_entities(entities)
 
 
 class EatonBatteryNumberEntity(CoordinatorEntity, NumberEntity):
-    @property
-    def mode(self):
-        return "box"
+    """Number entity for Eaton Battery Storage configurable values."""
 
-    def __init__(self, hass, coordinator, description):
+    _attr_mode = "box"
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: EatonBatteryStorageCoordinator,
+        description: dict[str, str | int | float],
+    ) -> None:
+        """Initialize the entity."""
         super().__init__(coordinator)
-        self.hass = hass
-        self.coordinator = coordinator
         self._key = description["key"]
         self._attr_unique_id = f"eaton_battery_{description['key']}"
         self._attr_name = description["name"]
-        self._native_min_value = float(description["min"])
-        self._native_max_value = float(description["max"])
-        self._native_step = float(description["step"])
-        self._native_unit_of_measurement = description["unit"]
+        self._attr_native_min_value = float(description["min"])
+        self._attr_native_max_value = float(description["max"])
+        self._attr_native_step = float(description["step"])
+        self._attr_native_unit_of_measurement = description["unit"]
         self._attr_device_class = description["device_class"]
-        self._all_entities = None
 
-    async def async_added_to_hass(self):
-        # Register for dispatcher updates
-        async_dispatcher_connect(
-            self.hass, f"{DOMAIN}_number_update", self._handle_external_update
+    async def async_added_to_hass(self) -> None:
+        """Register for dispatcher updates."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, f"{DOMAIN}_number_update", self._handle_external_update
+            )
         )
 
-    def _handle_external_update(self):
-        # Use schedule_update_ha_state for thread safety
+    def _handle_external_update(self) -> None:
+        """Handle external updates via dispatcher."""
         self.schedule_update_ha_state()
 
     @property
-    def extra_state_attributes(self):
-        # Show the linked value for power entities
+    def extra_state_attributes(self) -> dict[str, int] | None:
+        """Return extra state attributes showing linked values."""
+        native_val = self.native_value
+        if native_val is None:
+            return None
+
         if self._key == "charge_power":
-            percent = self.native_value
-            if percent is not None:
-                watts = int(round((percent / 100) * 3600))
-                return {"wattage": watts}
+            watts = int(round((native_val / 100) * 3600))
+            return {"wattage": watts}
         elif self._key == "charge_power_watt":
-            watts = self.native_value
-            if watts is not None:
-                percent = int(round((watts / 3600) * 100))
-                return {"percent": percent}
+            percent = int(round((native_val / 3600) * 100))
+            return {"percent": percent}
         elif self._key == "discharge_power":
-            percent = self.native_value
-            if percent is not None:
-                watts = int(round((percent / 100) * 3600))
-                return {"wattage": watts}
+            watts = int(round((native_val / 100) * 3600))
+            return {"wattage": watts}
         elif self._key == "discharge_power_watt":
-            watts = self.native_value
-            if watts is not None:
-                percent = int(round((watts / 3600) * 100))
-                return {"percent": percent}
+            percent = int(round((native_val / 3600) * 100))
+            return {"percent": percent}
         return None
 
     @property
-    def native_min_value(self):
-        return self._native_min_value
-
-    @property
-    def native_max_value(self):
-        return self._native_max_value
-
-    @property
-    def native_step(self):
-        return self._native_step
-
-    @property
-    def native_unit_of_measurement(self):
-        return self._native_unit_of_measurement
-
-    @property
-    def native_value(self):
-        # Get the value from hass.data storage
-        return self.hass.data[DOMAIN]["number_values"].get(self._key)
+    def native_value(self) -> float | None:
+        """Return the current value from storage."""
+        return getattr(self.coordinator, "number_values", {}).get(self._key)
 
     async def async_set_native_value(self, value: float) -> None:
-        # Store the value and sync the linked value if needed
-        self.hass.data[DOMAIN]["number_values"][self._key] = value
-        linked_key = None
-        if self._key == "charge_power":
-            watts = int(round((value / 100) * 3600))
-            self.hass.data[DOMAIN]["number_values"]["charge_power_watt"] = watts
-            linked_key = "charge_power_watt"
-        elif self._key == "charge_power_watt":
-            percent = int(round((value / 3600) * 100))
-            self.hass.data[DOMAIN]["number_values"]["charge_power"] = percent
-            linked_key = "charge_power"
-        elif self._key == "discharge_power":
-            watts = int(round((value / 100) * 3600))
-            self.hass.data[DOMAIN]["number_values"]["discharge_power_watt"] = watts
-            linked_key = "discharge_power_watt"
-        elif self._key == "discharge_power_watt":
-            percent = int(round((value / 3600) * 100))
-            self.hass.data[DOMAIN]["number_values"]["discharge_power"] = percent
-            linked_key = "discharge_power"
+        """Set the number value and update linked entities."""
+        # Ensure number_values exists on coordinator
+        if not hasattr(self.coordinator, "number_values"):
+            self.coordinator.number_values = {}
+        if not hasattr(self.coordinator, "number_store"):
+            store = Store(self.hass, 1, f"{DOMAIN}_number_values.json")
+            self.coordinator.number_store = store
+
+        # Store the value
+        self.coordinator.number_values[self._key] = value
+
+        # Calculate and store linked values
+        linked_key = self._calculate_linked_value(value)
+
         # Save to persistent storage
-        await self.hass.data[DOMAIN]["number_store"].async_save(
-            self.hass.data[DOMAIN]["number_values"]
-        )
-        # Instantly update all number entities
-        if linked_key and self._all_entities:
-            for entity in self._all_entities:
-                if hasattr(entity, "_key") and entity._key == linked_key:
-                    entity.async_write_ha_state()
-        async_dispatcher_send(self.hass, f"{DOMAIN}_number_update")
+        await self.coordinator.number_store.async_save(self.coordinator.number_values)
+
+        # Update this entity
         self.async_write_ha_state()
 
+        # Notify other entities via dispatcher
+        if linked_key:
+            async_dispatcher_send(self.hass, f"{DOMAIN}_number_update")
+
+    def _calculate_linked_value(self, value: float) -> str | None:
+        """Calculate and store linked value, return linked key if any."""
+        if self._key == "charge_power":
+            watts = int(round((value / 100) * 3600))
+            self.coordinator.number_values["charge_power_watt"] = watts
+            return "charge_power_watt"
+        elif self._key == "charge_power_watt":
+            percent = int(round((value / 3600) * 100))
+            self.coordinator.number_values["charge_power"] = percent
+            return "charge_power"
+        elif self._key == "discharge_power":
+            watts = int(round((value / 100) * 3600))
+            self.coordinator.number_values["discharge_power_watt"] = watts
+            return "discharge_power_watt"
+        elif self._key == "discharge_power_watt":
+            percent = int(round((value / 3600) * 100))
+            self.coordinator.number_values["discharge_power"] = percent
+            return "discharge_power"
+        return None
+
     @property
-    def device_info(self):
+    def device_info(self) -> dict[str, str]:
         """Return device information."""
         return self.coordinator.device_info
 
@@ -168,59 +191,29 @@ class EatonBatteryNumberEntity(CoordinatorEntity, NumberEntity):
 class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEntity):
     """Number entity to control the House Consumption Threshold for Energy Saving Mode."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:home-lightning-bolt"
+    _attr_native_unit_of_measurement = "W"
+    _attr_native_min_value = 300
+    _attr_native_max_value = 1000
+    _attr_native_step = 25
+    _attr_mode = "box"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the house consumption threshold number entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self._attr_entity_category = EntityCategory.CONFIG
-        self._optimistic_value = None  # For optimistic updates
+        self._attr_unique_id = "eaton_xstorage_set_house_consumption_threshold"
+        self._attr_name = "House consumption threshold"
+        self._optimistic_value: int | None = None
 
     @property
-    def name(self):
-        """Return the name of the number entity."""
-        return "Set House Consumption Threshold"
-
-    @property
-    def unique_id(self):
-        """Return the unique ID of the number entity."""
-        return "eaton_xstorage_set_house_consumption_threshold"
-
-    @property
-    def icon(self):
-        """Return the icon for the number entity."""
-        return "mdi:home-lightning-bolt"
-
-    @property
-    def device_info(self):
+    def device_info(self) -> dict[str, str]:
         """Return device information."""
         return self.coordinator.device_info
 
     @property
-    def native_unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "W"
-
-    @property
-    def native_min_value(self):
-        """Return the minimum value."""
-        return 300
-
-    @property
-    def native_max_value(self):
-        """Return the maximum value."""
-        return 1000
-
-    @property
-    def native_step(self):
-        """Return the increment/decrement step."""
-        return 25
-
-    @property
-    def mode(self):
-        """Return the mode of the number entity."""
-        return "box"
-
-    @property
-    def native_value(self):
+    def native_value(self) -> int | None:
         """Return the current house consumption threshold value."""
         if self._optimistic_value is not None:
             return self._optimistic_value
@@ -245,11 +238,11 @@ class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEnti
                 else {}
             )
             return es2.get("houseConsumptionThreshold", 300)
-        except Exception:  # broad catch to avoid entity failing to load
+        except (KeyError, TypeError, AttributeError):
             return 300
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Return True if entity is available."""
         return (
             self.coordinator.last_update_success and self.coordinator.data is not None
@@ -257,11 +250,6 @@ class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEnti
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the house consumption threshold value."""
-        import asyncio
-        import logging
-
-        _LOGGER = logging.getLogger(__name__)
-
         try:
             # Set optimistic value immediately for responsive UI
             self._optimistic_value = int(value)
@@ -314,12 +302,12 @@ class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEnti
 
             if result.get("successful", result.get("result") is not None):
                 _LOGGER.info(
-                    f"Successfully set house consumption threshold to {int(value)}W"
+                    "Successfully set house consumption threshold to %dW", int(value)
                 )
                 await asyncio.sleep(2)
             else:
                 _LOGGER.warning(
-                    f"API call completed but may not have succeeded: {result}"
+                    "API call completed but may not have succeeded: %s", result
                 )
                 await asyncio.sleep(1)
 
@@ -329,18 +317,16 @@ class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEnti
             # Clear optimistic value so we use real data
             self._optimistic_value = None
 
-        except Exception as e:
-            _LOGGER.error(f"Error setting house consumption threshold: {e}")
+        except Exception as exc:
+            _LOGGER.error("Error setting house consumption threshold: %s", exc)
             # Clear optimistic value and refresh to get current state
             self._optimistic_value = None
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"Failed to set house consumption threshold to {int(value)}W"
+            ) from exc
 
-    @property
-    def should_poll(self):
-        """No polling needed since we use coordinator."""
-        return False
-
-    def _handle_coordinator_update(self):
+    def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         # Clear optimistic value when we get real data from coordinator
         if self._optimistic_value is not None:
@@ -351,46 +337,25 @@ class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEnti
 class EatonXStorageBatteryBackupLevelNumber(CoordinatorEntity, NumberEntity):
     """Number entity to control the Battery Backup Level (bmsBackupLevel)."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:battery-lock"
+    _attr_native_unit_of_measurement = "%"
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 1
+    _attr_mode = "box"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the battery backup level number entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self._attr_entity_category = EntityCategory.CONFIG
-        self._optimistic_value = None
+        self._attr_unique_id = "eaton_xstorage_set_battery_backup_level"
+        self._attr_name = "Battery backup level"
+        self._optimistic_value: int | None = None
 
     @property
-    def name(self):
-        return "Set Battery Backup Level"
-
-    @property
-    def unique_id(self):
-        return "eaton_xstorage_set_battery_backup_level"
-
-    @property
-    def icon(self):
-        return "mdi:battery-lock"
-
-    @property
-    def native_unit_of_measurement(self):
-        return "%"
-
-    @property
-    def native_min_value(self):
-        return 0
-
-    @property
-    def native_max_value(self):
-        return 100
-
-    @property
-    def native_step(self):
-        return 1
-
-    @property
-    def mode(self):
-        return "box"
-
-    @property
-    def native_value(self):
+    def native_value(self) -> int | None:
+        """Return the current battery backup level value."""
         if self._optimistic_value is not None:
             return self._optimistic_value
         try:
@@ -412,25 +377,23 @@ class EatonXStorageBatteryBackupLevelNumber(CoordinatorEntity, NumberEntity):
             if "batteryBackupLevel" in energy_flow:
                 return energy_flow.get("batteryBackupLevel")
             return 0
-        except Exception:
+        except (KeyError, TypeError, AttributeError):
             return 0
 
     @property
-    def device_info(self):
+    def device_info(self) -> dict[str, str]:
         """Return device information."""
         return self.coordinator.device_info
 
     @property
-    def available(self):
+    def available(self) -> bool:
+        """Return True if entity is available."""
         return (
             self.coordinator.last_update_success and self.coordinator.data is not None
         )
 
     async def async_set_native_value(self, value: float) -> None:
-        import asyncio
-        import logging
-
-        _LOGGER = logging.getLogger(__name__)
+        """Set the battery backup level value."""
         try:
             self._optimistic_value = int(value)
             self.async_write_ha_state()
@@ -467,25 +430,27 @@ class EatonXStorageBatteryBackupLevelNumber(CoordinatorEntity, NumberEntity):
             payload = {"settings": current_settings}
             result = await self.coordinator.api.update_settings(payload)
             if result.get("successful", result.get("result") is not None):
-                _LOGGER.info(f"Successfully set battery backup level to {int(value)}%")
+                _LOGGER.info(
+                    "Successfully set battery backup level to %d%%", int(value)
+                )
                 await asyncio.sleep(2)
             else:
                 _LOGGER.warning(
-                    f"API call completed but may not have succeeded: {result}"
+                    "API call completed but may not have succeeded: %s", result
                 )
                 await asyncio.sleep(1)
             await self.coordinator.async_request_refresh()
             self._optimistic_value = None
-        except Exception as e:
-            _LOGGER.error(f"Error setting battery backup level: {e}")
+        except Exception as exc:
+            _LOGGER.error("Error setting battery backup level: %s", exc)
             self._optimistic_value = None
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                f"Failed to set battery backup level to {int(value)}%"
+            ) from exc
 
-    @property
-    def should_poll(self):
-        return False
-
-    def _handle_coordinator_update(self):
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
         if self._optimistic_value is not None:
             self._optimistic_value = None
         super()._handle_coordinator_update()

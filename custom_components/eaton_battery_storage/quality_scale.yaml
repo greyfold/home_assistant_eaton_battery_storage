@@ -1,0 +1,38 @@
+rules:
+  # Bronze (mandatory)
+  action-setup:
+    status: exempt
+    comment: Integration does not register custom service actions.
+  appropriate-polling: done
+  brands:
+    status: todo
+    comment: Branding assets need to be added.
+  common-modules: done
+  config-flow: done
+  config-flow-test-coverage:
+    status: todo
+    comment: Full test coverage for config flow needs to be implemented.
+  dependency-transparency: done
+  docs-actions:
+    status: exempt
+    comment: Integration does not provide service actions.
+  docs-high-level-description:
+    status: todo
+    comment: Documentation needs high-level description.
+  docs-installation-instructions:
+    status: todo
+    comment: Step-by-step installation instructions needed.
+  docs-removal-instructions:
+    status: todo
+    comment: Removal instructions needed in documentation.
+  entity-event-setup: done
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data:
+    status: todo
+    comment: Need to migrate from hass.data to ConfigEntry.runtime_data.
+  test-before-configure: done
+  test-before-setup:
+    status: todo
+    comment: Connection testing during setup needs improvement.
+  unique-config-entry: done

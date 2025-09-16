@@ -1,18 +1,32 @@
 """Button platform for Eaton Battery Storage integration."""
 
+from __future__ import annotations
+
+import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .coordinator import EatonBatteryStorageCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    coordinator = hass.data[DOMAIN]["coordinator"]
+async def async_setup_entry(
+    hass: HomeAssistant,  # pylint: disable=unused-argument
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up button entities."""
+    coordinator: EatonBatteryStorageCoordinator = config_entry.runtime_data
     entities = [
         EatonXStorageMarkNotificationsReadButton(coordinator),
         EatonXStorageStopCurrentOperationButton(coordinator),
@@ -23,31 +37,24 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
     """Button to mark all notifications as read."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:email-mark-as-unread"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the button."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-
-    @property
-    def name(self):
-        return "Mark All Notifications Read"
-
-    @property
-    def unique_id(self):
-        return "eaton_xstorage_mark_notifications_read"
-
-    @property
-    def icon(self):
-        return "mdi:email-mark-as-unread"
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_mark_notifications_read"
+        )
+        self._attr_name = "Mark all notifications read"
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.device_info
 
-    async def async_press(self):
+    async def async_press(self) -> None:
         """Mark all notifications as read."""
         try:
             result = await self.coordinator.api.mark_all_notifications_read()
@@ -56,47 +63,34 @@ class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
                 # Trigger coordinator update to refresh notification data
                 await self.coordinator.async_request_refresh()
             else:
-                _LOGGER.error(f"Failed to mark notifications as read: {result}")
+                _LOGGER.error("Failed to mark notifications as read: %s", result)
         except Exception as e:
-            _LOGGER.error(f"Error marking notifications as read: {e}")
-
-    @property
-    def should_poll(self):
-        return False
+            _LOGGER.error("Error marking notifications as read: %s", e)
 
 
 class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
     """Button to stop/cancel current operation by setting to basic mode."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:stop-circle"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the button."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-
-    @property
-    def name(self):
-        return "Stop Current Operation"
-
-    @property
-    def unique_id(self):
-        return "eaton_xstorage_stop_current_operation"
-
-    @property
-    def icon(self):
-        return "mdi:stop-circle"
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_stop_current_operation"
+        )
+        self._attr_name = "Stop current operation"
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.device_info
 
-    async def async_press(self):
+    async def async_press(self) -> None:
         """Stop current operation by setting to basic mode."""
         try:
-            import asyncio
-
             # Send SET_BASIC_MODE command with minimal duration (1 hour)
             result = await self.coordinator.api.send_device_command(
                 "SET_BASIC_MODE", 1, {}
@@ -109,7 +103,7 @@ class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
                 await asyncio.sleep(1)
             else:
                 _LOGGER.warning(
-                    f"Stop operation API call may not have succeeded: {result}"
+                    "Stop operation API call may not have succeeded: %s", result
                 )
                 await asyncio.sleep(1)
 
@@ -117,10 +111,6 @@ class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
             await self.coordinator.async_request_refresh()
 
         except Exception as e:
-            _LOGGER.error(f"Error stopping current operation: {e}")
+            _LOGGER.error("Error stopping current operation: %s", e)
             # Still refresh to get current state
             await self.coordinator.async_request_refresh()
-
-    @property
-    def should_poll(self):
-        return False

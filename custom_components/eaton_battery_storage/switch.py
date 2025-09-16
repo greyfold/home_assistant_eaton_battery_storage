@@ -1,20 +1,34 @@
 """Switch entities for Eaton xStorage Home battery integration."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+if TYPE_CHECKING:
+    from .coordinator import EatonBatteryStorageCoordinator
+
+    type EatonBatteryStorageConfigEntry = ConfigEntry[EatonBatteryStorageCoordinator]
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,  # pylint: disable=unused-argument
+    entry: EatonBatteryStorageConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
     """Set up Eaton xStorage Home switches from a config entry."""
-    coordinator = hass.data[DOMAIN]["coordinator"]
+    coordinator = entry.runtime_data
     entities = [
         EatonXStoragePowerSwitch(coordinator),
         EatonXStorageEnergySavingModeSwitch(coordinator),
@@ -25,34 +39,24 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
     """Switch to control the power state of the Eaton xStorage Home device."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:power"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the power switch."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self._attr_entity_category = EntityCategory.CONFIG
-        self._optimistic_state = None  # For optimistic updates
+        self._attr_unique_id = "eaton_xstorage_inverter_power"
+        self._attr_name = "Inverter power"
+        self._optimistic_state: bool | None = None
 
     @property
-    def name(self):
-        """Return the name of the switch."""
-        return "Inverter Power"
-
-    @property
-    def unique_id(self):
-        """Return the unique ID of the switch."""
-        return "eaton_xstorage_inverter_power"
-
-    @property
-    def icon(self):
-        """Return the icon for the switch."""
-        return "mdi:power"
-
-    @property
-    def device_info(self):
+    def device_info(self) -> dict[str, str]:
         """Return device information."""
         return self.coordinator.device_info
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool | None:
         """Return true if the device is on."""
         # If we have an optimistic state from a recent command, use that
         if self._optimistic_state is not None:
@@ -68,13 +72,13 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
             return False
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Return True if entity is available."""
         return (
             self.coordinator.last_update_success and self.coordinator.data is not None
         )
 
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs) -> None:
         """Turn the device on."""
         try:
             # Set optimistic state immediately for responsive UI
@@ -89,7 +93,7 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
                 await asyncio.sleep(3)
             else:
                 _LOGGER.warning(
-                    f"API call completed but may not have succeeded: {result}"
+                    "API call completed but may not have succeeded: %s", result
                 )
                 # Still wait a bit in case it worked despite the response
                 await asyncio.sleep(2)
@@ -100,13 +104,14 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
             # Clear optimistic state so we use real data
             self._optimistic_state = None
 
-        except Exception as e:
-            _LOGGER.error(f"Error turning on device: {e}")
+        except Exception as exc:
+            _LOGGER.error("Error turning on device: %s", exc)
             # Clear optimistic state and refresh to get current state
             self._optimistic_state = None
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError("Failed to turn on device") from exc
 
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs) -> None:
         """Turn the device off."""
         try:
             # Set optimistic state immediately for responsive UI
@@ -121,7 +126,7 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
                 await asyncio.sleep(3)
             else:
                 _LOGGER.warning(
-                    f"API call completed but may not have succeeded: {result}"
+                    "API call completed but may not have succeeded: %s", result
                 )
                 # Still wait a bit in case it worked despite the response
                 await asyncio.sleep(2)
@@ -132,18 +137,22 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
             # Clear optimistic state so we use real data
             self._optimistic_state = None
 
-        except Exception as e:
-            _LOGGER.error(f"Error turning off device: {e}")
+        except Exception as exc:
+            _LOGGER.error("Error turning off device: %s", exc)
             # Clear optimistic state and refresh to get current state
             self._optimistic_state = None
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError("Failed to turn off device") from exc
 
-    @property
-    def should_poll(self):
-        """No polling needed since we use coordinator."""
-        return False
+    def turn_on(self, **kwargs) -> None:
+        """Turn the device on (sync wrapper)."""
+        asyncio.create_task(self.async_turn_on(**kwargs))
 
-    def _handle_coordinator_update(self):
+    def turn_off(self, **kwargs) -> None:
+        """Turn the device off (sync wrapper)."""
+        asyncio.create_task(self.async_turn_off(**kwargs))
+
+    def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         # Clear optimistic state when we get real data from coordinator
         if self._optimistic_state is not None:
@@ -154,34 +163,24 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
 class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
     """Switch to control the Energy Saving Mode of the Eaton xStorage Home device."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:leaf"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the energy saving mode switch."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self._attr_entity_category = EntityCategory.CONFIG
-        self._optimistic_state = None  # For optimistic updates
+        self._attr_unique_id = "eaton_xstorage_energy_saving_mode"
+        self._attr_name = "Energy saving mode"
+        self._optimistic_state: bool | None = None
 
     @property
-    def name(self):
-        """Return the name of the switch."""
-        return "Energy Saving Mode"
-
-    @property
-    def unique_id(self):
-        """Return the unique ID of the switch."""
-        return "eaton_xstorage_energy_saving_mode"
-
-    @property
-    def icon(self):
-        """Return the icon for the switch."""
-        return "mdi:leaf"
-
-    @property
-    def device_info(self):
+    def device_info(self) -> dict[str, str]:
         """Return device information."""
         return self.coordinator.device_info
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool | None:
         """Return true if energy saving mode is enabled."""
         # If we have an optimistic state from a recent command, use that
         if self._optimistic_state is not None:
@@ -203,13 +202,13 @@ class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
             return False
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Return True if entity is available."""
         return (
             self.coordinator.last_update_success and self.coordinator.data is not None
         )
 
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs) -> None:
         """Turn energy saving mode on."""
         try:
             # Set optimistic state immediately for responsive UI
@@ -264,7 +263,7 @@ class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
                 await asyncio.sleep(2)
             else:
                 _LOGGER.warning(
-                    f"API call completed but may not have succeeded: {result}"
+                    "API call completed but may not have succeeded: %s", result
                 )
                 await asyncio.sleep(1)
 
@@ -274,13 +273,14 @@ class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
             # Clear optimistic state so we use real data
             self._optimistic_state = None
 
-        except Exception as e:
-            _LOGGER.error(f"Error enabling energy saving mode: {e}")
+        except Exception as exc:
+            _LOGGER.error("Error enabling energy saving mode: %s", exc)
             # Clear optimistic state and refresh to get current state
             self._optimistic_state = None
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError("Failed to enable energy saving mode") from exc
 
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs) -> None:
         """Turn energy saving mode off."""
         try:
             # Set optimistic state immediately for responsive UI
@@ -335,7 +335,7 @@ class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
                 await asyncio.sleep(2)
             else:
                 _LOGGER.warning(
-                    f"API call completed but may not have succeeded: {result}"
+                    "API call completed but may not have succeeded: %s", result
                 )
                 await asyncio.sleep(1)
 
@@ -345,18 +345,22 @@ class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
             # Clear optimistic state so we use real data
             self._optimistic_state = None
 
-        except Exception as e:
-            _LOGGER.error(f"Error disabling energy saving mode: {e}")
+        except Exception as exc:
+            _LOGGER.error("Error disabling energy saving mode: %s", exc)
             # Clear optimistic state and refresh to get current state
             self._optimistic_state = None
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError("Failed to disable energy saving mode") from exc
 
-    @property
-    def should_poll(self):
-        """No polling needed since we use coordinator."""
-        return False
+    def turn_on(self, **kwargs) -> None:
+        """Turn energy saving mode on (sync wrapper)."""
+        asyncio.create_task(self.async_turn_on(**kwargs))
 
-    def _handle_coordinator_update(self):
+    def turn_off(self, **kwargs) -> None:
+        """Turn energy saving mode off (sync wrapper)."""
+        asyncio.create_task(self.async_turn_off(**kwargs))
+
+    def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         # Clear optimistic state when we get real data from coordinator
         if self._optimistic_state is not None:

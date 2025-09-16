@@ -1,0 +1,8 @@
+# Services for Eaton Battery Storage integration
+# This file defines available services that users can call
+# Currently no custom services are defined - all functionality is available through entity controls
+
+# Future services could include:
+# - Batch operations
+# - Advanced scheduling
+# - System diagnostics

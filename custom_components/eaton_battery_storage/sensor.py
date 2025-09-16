@@ -23,11 +23,17 @@ Sensors with accuracy issues are marked with accuracy_warning=True in SENSOR_TYP
 30-day metrics are disabled by default due to these accuracy concerns.
 """
 
+from __future__ import annotations
+
 import logging
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfPower
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -36,10 +42,10 @@ from .const import (
     CURRENT_MODE_COMMAND_MAP,
     CURRENT_MODE_RECURRENCE_MAP,
     CURRENT_MODE_TYPE_MAP,
-    DOMAIN,
     OPERATION_MODE_MAP,
     POWER_ACCURACY_WARNING,
 )
+from .coordinator import EatonXstorageHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -636,12 +642,17 @@ SENSOR_TYPES = {
 }
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    coordinator = hass.data[DOMAIN]["coordinator"]
+async def async_setup_entry(
+    hass: HomeAssistant,  # pylint: disable=unused-argument
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up Eaton xStorage Home sensor platform."""
+    coordinator: EatonXstorageHomeCoordinator = config_entry.runtime_data
     has_pv = config_entry.data.get("has_pv", False)
 
     # Create sensors based on PV configuration
-    entities = []
+    entities: list[EatonXStorageSensor | EatonXStorageNotificationsSensor] = []
     for key, description in SENSOR_TYPES.items():
         # Skip PV-related sensors if has_pv is False
         if description.get("pv_related", False) and not has_pv:
@@ -654,34 +665,29 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities)
 
 
-class EatonXStorageNotificationsSensor(CoordinatorEntity, SensorEntity):
+class EatonXStorageNotificationsSensor(
+    CoordinatorEntity[EatonXstorageHomeCoordinator], SensorEntity
+):
     """Sensor for displaying notifications array."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_name = "Notifications"
+    _attr_unique_id = "eaton_xstorage_notifications"
+
+    def __init__(self, coordinator: EatonXstorageHomeCoordinator) -> None:
+        """Initialize the notifications sensor."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
 
     @property
-    def entity_category(self):
-        return EntityCategory.DIAGNOSTIC
-
-    @property
-    def name(self):
-        return "Notifications"
-
-    @property
-    def unique_id(self):
-        return "eaton_xstorage_notifications"
-
-    @property
-    def state(self):
+    def native_value(self) -> int:
         """Return the number of notifications as the state."""
         try:
             notifications_data = self.coordinator.data.get("notifications", {})
             results = notifications_data.get("results", [])
             return len(results)
-        except Exception as e:
-            _LOGGER.error(f"Error retrieving notifications state: {e}")
+        except (KeyError, TypeError, AttributeError) as err:
+            _LOGGER.error("Error retrieving notifications state: %s", err)
             return 0
 
     @property
@@ -712,67 +718,64 @@ class EatonXStorageNotificationsSensor(CoordinatorEntity, SensorEntity):
                 "start": notifications_data.get("start", 0),
                 "size": notifications_data.get("size", 0),
             }
-        except Exception as e:
-            _LOGGER.error(f"Error retrieving notifications attributes: {e}")
+        except (KeyError, TypeError, AttributeError) as e:
+            _LOGGER.error("Error retrieving notifications attributes: %s", e)
             return {}
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.device_info
 
-    @property
-    def should_poll(self):
-        return False
 
+class EatonXStorageSensor(
+    CoordinatorEntity[EatonXstorageHomeCoordinator], SensorEntity
+):
+    """Eaton xStorage Home sensor entity."""
 
-class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, key, description, has_pv):
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: EatonXstorageHomeCoordinator,
+        key: str,
+        description: dict[str, Any],
+        _has_pv: bool,
+    ) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
         self._key = key
-        self._name = description["name"]
-        self._unit = description["unit"]
-        self._device_class = description["device_class"]
-        self._entity_category = description["entity_category"]
-        self._disabled_by_default = description.get("disabled_by_default", False)
+        self._attr_name = description["name"]
+        self._attr_native_unit_of_measurement = description["unit"]
+        self._attr_device_class = description["device_class"]
+        self._attr_entity_category = description["entity_category"]
+        self._attr_entity_registry_enabled_default = not description.get(
+            "disabled_by_default", False
+        )
         self._accuracy_warning = description.get("accuracy_warning", False)
         self._precision = description.get("precision", None)
+        self._attr_unique_id = f"eaton_xstorage_{key.replace('.', '_')}"
 
     @property
-    def entity_category(self):
-        return self._entity_category
-
-    @property
-    def entity_registry_enabled_default(self):
-        """Return if the entity should be enabled when first added.
-
-        This only applies when first added to the entity registry.
-        """
+    def entity_registry_enabled_default(self) -> bool:
+        """Return if the entity should be enabled when first added."""
         # Disable TIDA Protocol Version by default as it's rarely useful
         if self._key == "technical_status.tidaProtocolVersion":
             return False
 
         # Disable entities marked with disabled_by_default flag (e.g., 30-day metrics)
-        if self._disabled_by_default:
-            return False
-
-        return True
+        return self._attr_entity_registry_enabled_default
 
     @property
-    def name(self):
-        return self._name
-
-    @property
-    def unique_id(self):
-        return f"eaton_xstorage_{self._key}"
-
-    @property
-    def state(self):
+    def native_value(self) -> str | int | float | None:
         try:
             # Log accuracy warning for sensors with known accuracy issues
             if self._accuracy_warning:
                 _LOGGER.debug(
-                    f"Sensor {self._name} ({self._key}) - {POWER_ACCURACY_WARNING}"
+                    "Sensor %s (%s) - %s",
+                    self._attr_name,
+                    self._key,
+                    POWER_ACCURACY_WARNING,
                 )
 
             # Calculate BMS cell voltage delta first (before normal data extraction)
@@ -785,12 +788,14 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
                     # Filter out values below 1000mV before calculation
                     if highest is not None and highest < 1000:
                         _LOGGER.error(
-                            f"BMS highest cell voltage below 1000mV threshold: {highest}mV - delta calculation not possible"
+                            "BMS highest cell voltage below 1000mV threshold: %smV - delta calculation not possible",
+                            highest,
                         )
                         return None
                     if lowest is not None and lowest < 1000:
                         _LOGGER.error(
-                            f"BMS lowest cell voltage below 1000mV threshold: {lowest}mV - delta calculation not possible"
+                            "BMS lowest cell voltage below 1000mV threshold: %smV - delta calculation not possible",
+                            lowest,
                         )
                         return None
 
@@ -799,11 +804,13 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
                         result = round(delta, 1)
                         return result
                     _LOGGER.debug(
-                        f"Delta calculation failed - missing values. Highest: {highest}, Lowest: {lowest}"
+                        "Delta calculation failed - missing values. Highest: %s, Lowest: %s",
+                        highest,
+                        lowest,
                     )
                     return None
                 except (ValueError, TypeError) as e:
-                    _LOGGER.error(f"Error calculating BMS cell voltage delta: {e}")
+                    _LOGGER.error("Error calculating BMS cell voltage delta: %s", e)
                     return None
 
             # Normal data extraction for other sensors
@@ -825,7 +832,10 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
             # Debug logging for technical status sensors to help troubleshoot formatting issues
             if self._key.startswith("technical_status.") and value is not None:
                 _LOGGER.debug(
-                    f"Technical Status Sensor '{self._key}' - Raw value: '{value}' (type: {type(value).__name__})"
+                    "Technical Status Sensor '%s' - Raw value: '%s' (type: %s)",
+                    self._key,
+                    value,
+                    type(value).__name__,
                 )
 
             # Filter out values below 1000mV for BMS cell voltage sensors
@@ -835,7 +845,9 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
             ]:
                 if isinstance(value, (int, float)) and value < 1000:
                     _LOGGER.error(
-                        f"BMS cell voltage {self._key} below 1000mV threshold: {value}mV - treating as error"
+                        "BMS cell voltage %s below 1000mV threshold: %smV - treating as error",
+                        self._key,
+                        value,
                     )
                     return None
 
@@ -867,7 +879,9 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
             if self._key == "technical_status.operationMode" and isinstance(value, str):
                 # Add debug logging to help troubleshoot
                 _LOGGER.debug(
-                    f"Technical Operation Mode - Raw value: '{value}', Mapped value: '{OPERATION_MODE_MAP.get(value, value)}'"
+                    "Technical Operation Mode - Raw value: '%s', Mapped value: '%s'",
+                    value,
+                    OPERATION_MODE_MAP.get(value, value),
                 )
                 return OPERATION_MODE_MAP.get(value, value)
 
@@ -882,7 +896,9 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
                 return BMS_STATE_MAP.get(value, value)
 
             # Round temperature values to 1 decimal place
-            if self._device_class == "temperature" and isinstance(value, (int, float)):
+            if self._attr_device_class == "temperature" and isinstance(
+                value, (int, float)
+            ):
                 return round(value, 1)
 
             # Format startTime and endTime to 12-hour format
@@ -907,41 +923,42 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
             if "cpuUsage.used" in self._key and isinstance(value, (int, float)):
                 return round(value, 2)
             return value
-        except Exception as e:
-            _LOGGER.error(f"Error retrieving state for {self._key}: {e}")
+        except (KeyError, TypeError, AttributeError, ValueError) as e:
+            _LOGGER.error("Error retrieving state for %s: %s", self._key, e)
             return None
 
     @property
-    def unit_of_measurement(self):
-        return self._unit
-
-    @property
-    def device_class(self):
-        return self._device_class
-
-    @property
-    def suggested_display_precision(self):
+    def suggested_display_precision(self) -> int | None:
         """Return the suggested number of decimal places for display."""
         # Use sensor-specific precision if defined
         if self._precision is not None:
             return self._precision
 
         # Temperature sensors: 1 decimal place
-        if self._device_class == "temperature" or self._device_class == "voltage":
+        if (
+            self._attr_device_class == "temperature"
+            or self._attr_device_class == "voltage"
+        ):
             return 1
         # Current sensors: 2 decimal places
-        if self._device_class == "current" or self._device_class == "frequency":
+        if (
+            self._attr_device_class == "current"
+            or self._attr_device_class == "frequency"
+        ):
             return 2
         # Power sensors: 0 decimal places (whole watts)
-        if self._device_class == "power":
+        if self._attr_device_class == "power":
             return 0
         # Energy sensors: 1 decimal place
-        if self._device_class == "energy" or self._device_class == "energy_storage":
+        if (
+            self._attr_device_class == "energy"
+            or self._attr_device_class == "energy_storage"
+        ):
             return 1
         # Apparent power (VA): 0 decimal places
         if (
-            self._device_class == "apparent_power"
-            or self._unit == PERCENTAGE
+            self._attr_device_class == "apparent_power"
+            or self._attr_native_unit_of_measurement == PERCENTAGE
             or "ramUsage" in self._key
         ):
             return 0
@@ -955,7 +972,7 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
         return None
 
     @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes for entities with accuracy warnings."""
         if self._accuracy_warning:
             return {
@@ -966,8 +983,5 @@ class EatonXStorageSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.device_info
-
-    @property
-    def should_poll(self):
-        return False

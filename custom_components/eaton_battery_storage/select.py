@@ -1,7 +1,10 @@
 """Select entities for Eaton battery storage system operation modes."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import EntityCategory
@@ -9,10 +12,17 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .coordinator import EatonBatteryStorageCoordinator
+
 _LOGGER = logging.getLogger(__name__)
 
 # Supported default modes and their command codes
-DEFAULT_MODE_OPTIONS = [
+DEFAULT_MODE_OPTIONS: list[tuple[str, str]] = [
     ("Basic Mode", "SET_BASIC_MODE"),
     ("Maximize Auto Consumption", "SET_MAXIMIZE_AUTO_CONSUMPTION"),
     ("Variable Grid Injection", "SET_VARIABLE_GRID_INJECTION"),
@@ -21,8 +31,13 @@ DEFAULT_MODE_OPTIONS = [
 ]
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    coordinator = hass.data[DOMAIN]["coordinator"]
+async def async_setup_entry(
+    hass: HomeAssistant,  # pylint: disable=unused-argument
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up select entities."""
+    coordinator: EatonBatteryStorageCoordinator = config_entry.runtime_data
     async_add_entities(
         [
             EatonXStorageDefaultOperationModeSelect(coordinator),
@@ -34,41 +49,35 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
     """Select entity to configure Default Operation Mode in settings.defaultMode."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:transmission-tower"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the select entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_default_operation_mode"
+        )
+        self._attr_name = "Default operation mode"
         self._options = [label for (label, _) in DEFAULT_MODE_OPTIONS]
         self._option_to_cmd = {label: cmd for (label, cmd) in DEFAULT_MODE_OPTIONS}
         self._cmd_to_label = {cmd: label for (label, cmd) in DEFAULT_MODE_OPTIONS}
-        self._optimistic_option = None
-
-    @property
-    def name(self):
-        return "Default Operation Mode"
-
-    @property
-    def unique_id(self):
-        return "eaton_xstorage_default_operation_mode"
-
-    @property
-    def icon(self):
-        return "mdi:transmission-tower"
+        self._optimistic_option: str | None = None
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.device_info
 
     @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
-
-    @property
-    def options(self):
+    def options(self) -> list[str]:
+        """Return list of available options."""
         return self._options
 
     @property
-    def current_option(self):
+    def current_option(self) -> str | None:
+        """Return the current selected option."""
         if self._optimistic_option is not None:
             return self._optimistic_option
         try:
@@ -88,12 +97,14 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
         return None
 
     @property
-    def available(self):
+    def available(self) -> bool:
+        """Return if entity is available."""
         return (
             self.coordinator.last_update_success and self.coordinator.data is not None
         )
 
     async def async_select_option(self, option: str) -> None:
+        """Select an option."""
         if option not in self._option_to_cmd:
             _LOGGER.error("Invalid operation mode option: %s", option)
             return
@@ -195,11 +206,12 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
             self._optimistic_option = None
             await self.coordinator.async_request_refresh()
 
-    @property
-    def should_poll(self):
-        return False
+    def select_option(self, option: str) -> None:
+        """Change the selected option."""
+        asyncio.create_task(self.async_select_option(option))
 
-    def _handle_coordinator_update(self):
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
         if self._optimistic_option is not None:
             self._optimistic_option = None
         super()._handle_coordinator_update()
@@ -208,10 +220,17 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
 class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
     """Select entity to send immediate operation mode commands via /api/device/command."""
 
-    def __init__(self, coordinator):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:battery-clock"
+
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the select entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_current_operation_mode"
+        )
+        self._attr_name = "Current operation mode"
         self._options = [label for (label, _) in DEFAULT_MODE_OPTIONS] + [
             "Manual Charge",
             "Manual Discharge",
@@ -224,34 +243,21 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
         self._cmd_to_label.update(
             {"SET_CHARGE": "Manual Charge", "SET_DISCHARGE": "Manual Discharge"}
         )
-        self._optimistic_option = None
-
-    @property
-    def name(self):
-        return "Current Operation Mode"
-
-    @property
-    def unique_id(self):
-        return "eaton_xstorage_current_operation_mode"
-
-    @property
-    def icon(self):
-        return "mdi:battery-clock"
+        self._optimistic_option: str | None = None
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.device_info
 
     @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
-
-    @property
-    def options(self):
+    def options(self) -> list[str]:
+        """Return list of available options."""
         return self._options
 
     @property
-    def current_option(self):
+    def current_option(self) -> str | None:
+        """Return the current selected option."""
         if self._optimistic_option is not None:
             return self._optimistic_option
         try:
@@ -269,12 +275,14 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
         return None
 
     @property
-    def available(self):
+    def available(self) -> bool:
+        """Return if entity is available."""
         return (
             self.coordinator.last_update_success and self.coordinator.data is not None
         )
 
     async def async_select_option(self, option: str) -> None:
+        """Select an option."""
         if option not in self._option_to_cmd:
             _LOGGER.error("Invalid current operation mode option: %s", option)
             return
@@ -293,15 +301,18 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
             duration = 1  # default fallback
             if command in ["SET_CHARGE"]:
                 duration = helper_values.get("charge_duration", 1)
-                _LOGGER.debug(f"Using charge_duration: {duration} for {command}")
+                _LOGGER.debug("Using charge_duration: %s for %s", duration, command)
             elif command in ["SET_DISCHARGE"]:
                 duration = helper_values.get("discharge_duration", 1)
-                _LOGGER.debug(f"Using discharge_duration: {duration} for {command}")
+                _LOGGER.debug("Using discharge_duration: %s for %s", duration, command)
             else:
                 # All intelligent modes use the shared run_duration
                 duration = helper_values.get("run_duration", 2)
                 _LOGGER.debug(
-                    f"Using run_duration: {duration} for intelligent mode {command} (available helpers: {list(helper_values.keys())})"
+                    "Using run_duration: %s for intelligent mode %s (available helpers: %s)",
+                    duration,
+                    command,
+                    list(helper_values.keys()),
                 )
 
             # Build parameters based on command type
@@ -380,11 +391,8 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
             self._optimistic_option = None
             await self.coordinator.async_request_refresh()
 
-    @property
-    def should_poll(self):
-        return False
-
-    def _handle_coordinator_update(self):
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
         if self._optimistic_option is not None:
             self._optimistic_option = None
         super()._handle_coordinator_update()

@@ -1,51 +1,60 @@
 """Eaton battery storage event platform."""
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.event import EventEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .coordinator import EatonBatteryStorageCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    coordinator = hass.data[DOMAIN]["coordinator"]
+async def async_setup_entry(
+    hass: HomeAssistant,  # pylint: disable=unused-argument
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up event entities."""
+    coordinator: EatonBatteryStorageCoordinator = config_entry.runtime_data
     async_add_entities([EatonXStorageNotificationEvent(coordinator)])
 
 
 class EatonXStorageNotificationEvent(CoordinatorEntity, EventEntity):
     """Event entity that emits an event when new unread notifications are detected."""
 
-    _attr_event_types = {"notification"}
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_event_types = ["notification"]
 
-    def __init__(self, coordinator):
+    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+        """Initialize the event entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self._seen = set()
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_notifications_event"
+        )
+        self._attr_name = "Notifications event"
+        self._seen: set[str] = set()
         self._primed = False
         # Keep track of the last emitted event type to expose a friendly state
-        self._last_event_type = None
-
-    @property
-    def name(self):
-        return "Notifications Event"
-
-    @property
-    def unique_id(self):
-        return "eaton_xstorage_notifications_event"
-
-    @property
-    def entity_category(self):
-        return EntityCategory.DIAGNOSTIC
+        self._last_event_type: str | None = None
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.device_info
 
-    def _extract_alerts(self):
+    def _extract_alerts(self) -> list[dict[str, Any]]:
+        """Extract alerts from coordinator data."""
         data = (
             self.coordinator.data.get("notifications", {})
             if self.coordinator.data
@@ -62,7 +71,8 @@ class EatonXStorageNotificationEvent(CoordinatorEntity, EventEntity):
                 alerts.append(item)
         return alerts
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
+        """Handle entity addition to hass."""
         await super().async_added_to_hass()
         # Prime seen set on first add to avoid a burst of historical events
         for alert in self._extract_alerts():
@@ -72,6 +82,7 @@ class EatonXStorageNotificationEvent(CoordinatorEntity, EventEntity):
         self._primed = True
 
     def _handle_coordinator_update(self) -> None:
+        """Handle coordinator update."""
         # On each data refresh, emit events for new unseen alerts
         try:
             for alert in self._extract_alerts():
@@ -84,34 +95,41 @@ class EatonXStorageNotificationEvent(CoordinatorEntity, EventEntity):
                     self._trigger_event("notification", {"alert": alert})
                     # Update the visible state to the last event type
                     self._last_event_type = "notification"
-        except Exception as e:
+        except (KeyError, TypeError, AttributeError) as e:
             _LOGGER.error("Error processing notifications for events: %s", e)
         finally:
             # Ensure the entity state is updated in HA
             super()._handle_coordinator_update()
 
     @property
-    def should_poll(self):
-        return False
-
-    @property
-    def state(self):
-        # Friendly state instead of Unknown before first event.
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        # Provide friendly status information as attributes instead of overriding state
         # Priority:
         # 1) If there are unread notifications, show 'has_unread'
         # 2) Else show last event type if available
         # 3) Else 'idle'
+        status = "idle"
+        unread_count = 0
+
         try:
-            unread = 0
             if self.coordinator and self.coordinator.data:
                 unread_data = self.coordinator.data.get(
                     "unread_notifications_count", {}
                 )
                 # unread endpoint returns {"total": <int>}
                 if isinstance(unread_data, dict):
-                    unread = int(unread_data.get("total", 0) or 0)
-            if unread > 0:
-                return "Has Unread"
+                    unread_count = int(unread_data.get("total", 0) or 0)
+
+            if unread_count > 0:
+                status = "has_unread"
+            elif self._last_event_type:
+                status = self._last_event_type
         except Exception:
             pass
-        return self._last_event_type or "idle"
+
+        return {
+            "status": status,
+            "unread_count": unread_count,
+            "last_event_type": self._last_event_type,
+        }

@@ -1,4 +1,8 @@
-# Constants
+"""Constants for Eaton Battery Storage integration."""
+
+from __future__ import annotations
+
+# Integration domain
 DOMAIN = "eaton_battery_storage"
 
 # Accuracy warning message for power measurements
@@ -8,7 +12,7 @@ POWER_ACCURACY_WARNING = (
 )
 
 # Current Mode Command mapping for human-readable display
-CURRENT_MODE_COMMAND_MAP = {
+CURRENT_MODE_COMMAND_MAP: dict[str, str] = {
     "SET_CHARGE": "Charge",
     "SET_BASIC_MODE": "Basic Mode",
     "SET_DISCHARGE": "Discharge",
@@ -19,20 +23,23 @@ CURRENT_MODE_COMMAND_MAP = {
 }
 
 # Current Mode Action mapping for human-readable display
-CURRENT_MODE_ACTION_MAP = {"ACTION_CHARGE": "Charge", "ACTION_DISCHARGE": "Discharge"}
+CURRENT_MODE_ACTION_MAP: dict[str, str] = {
+    "ACTION_CHARGE": "Charge",
+    "ACTION_DISCHARGE": "Discharge",
+}
 
 # Current Mode Type mapping for human-readable display
-CURRENT_MODE_TYPE_MAP = {"MANUAL": "Manual", "SCHEDULE": "Scheduled"}
+CURRENT_MODE_TYPE_MAP: dict[str, str] = {"MANUAL": "Manual", "SCHEDULE": "Scheduled"}
 
 # Current Mode Recurrence mapping for human-readable display
-CURRENT_MODE_RECURRENCE_MAP = {
+CURRENT_MODE_RECURRENCE_MAP: dict[str, str] = {
     "MANUAL_EVENT": "Manual Event",
     "DAILY": "Daily",
     "WEEKLY": "Weekly",
 }
 
 # Operation Mode mapping for human-readable display
-OPERATION_MODE_MAP = {
+OPERATION_MODE_MAP: dict[str, str] = {
     "CHARGING": "Charging",
     "DISCHARGING": "Discharging",
     "IDLE": "Idle",
@@ -48,7 +55,7 @@ OPERATION_MODE_MAP = {
 }
 
 # BMS State mapping for human-readable display
-BMS_STATE_MAP = {
+BMS_STATE_MAP: dict[str, str] = {
     "BAT_CHARGING": "Charging",
     "BAT_DISCHARGING": "Discharging",
     "BAT_IDLE": "Idle",
