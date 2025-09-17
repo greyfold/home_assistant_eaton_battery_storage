@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,  # pylint: disable=unused-argument
+    _hass: HomeAssistant,
     entry: EatonBatteryStorageConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
@@ -78,7 +78,7 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
             self.coordinator.last_update_success and self.coordinator.data is not None
         )
 
-    async def async_turn_on(self, **kwargs) -> None:
+    async def async_turn_on(self, **_kwargs) -> None:
         """Turn the device on."""
         try:
             # Set optimistic state immediately for responsive UI
@@ -111,7 +111,7 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError("Failed to turn on device") from exc
 
-    async def async_turn_off(self, **kwargs) -> None:
+    async def async_turn_off(self, **_kwargs) -> None:
         """Turn the device off."""
         try:
             # Set optimistic state immediately for responsive UI
@@ -208,7 +208,7 @@ class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
             self.coordinator.last_update_success and self.coordinator.data is not None
         )
 
-    async def async_turn_on(self, **kwargs) -> None:
+    async def async_turn_on(self, **_kwargs) -> None:
         """Turn energy saving mode on."""
         try:
             # Set optimistic state immediately for responsive UI
@@ -280,7 +280,7 @@ class EatonXStorageEnergySavingModeSwitch(CoordinatorEntity, SwitchEntity):
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError("Failed to enable energy saving mode") from exc
 
-    async def async_turn_off(self, **kwargs) -> None:
+    async def async_turn_off(self, **_kwargs) -> None:
         """Turn energy saving mode off."""
         try:
             # Set optimistic state immediately for responsive UI

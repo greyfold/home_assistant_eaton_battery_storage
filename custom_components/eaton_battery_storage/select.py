@@ -32,7 +32,7 @@ DEFAULT_MODE_OPTIONS: list[tuple[str, str]] = [
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,  # pylint: disable=unused-argument
+    _hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
@@ -218,7 +218,10 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
 
 
 class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
-    """Select entity to send immediate operation mode commands via /api/device/command."""
+    """Select entity to send immediate operation mode commands.
+    
+    Commands sent via /api/device/command.
+    """
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG

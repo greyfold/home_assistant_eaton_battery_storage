@@ -643,7 +643,7 @@ SENSOR_TYPES = {
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,  # pylint: disable=unused-argument
+    _hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
@@ -817,10 +817,7 @@ class EatonXStorageSensor(
             keys = self._key.split(".")
             value = self.coordinator.data
             for k in keys:
-                if isinstance(value, dict):
-                    value = value.get(k, {})
-                else:
-                    value = {}
+                value = value.get(k, {}) if isinstance(value, dict) else {}
             # If value is still a dict, return None
             if isinstance(value, dict):
                 return None
@@ -839,17 +836,20 @@ class EatonXStorageSensor(
                 )
 
             # Filter out values below 1000mV for BMS cell voltage sensors
-            if self._key in [
-                "technical_status.bmsHighestCellVoltage",
-                "technical_status.bmsLowestCellVoltage",
-            ]:
-                if isinstance(value, (int, float)) and value < 1000:
-                    _LOGGER.error(
-                        "BMS cell voltage %s below 1000mV threshold: %smV - treating as error",
-                        self._key,
-                        value,
-                    )
-                    return None
+            if (
+                self._key in [
+                    "technical_status.bmsHighestCellVoltage",
+                    "technical_status.bmsLowestCellVoltage",
+                ]
+                and isinstance(value, (int, float))
+                and value < 1000
+            ):
+                _LOGGER.error(
+                    "BMS cell voltage %s below 1000mV threshold: %smV - treating as error",
+                    self._key,
+                    value,
+                )
+                return None
 
             # Format Current Mode Command to human-readable format
             if self._key == "status.currentMode.command" and isinstance(value, str):
@@ -902,20 +902,21 @@ class EatonXStorageSensor(
                 return round(value, 1)
 
             # Format startTime and endTime to 12-hour format
-            if self._key.endswith("startTime") or self._key.endswith("endTime"):
-                if isinstance(value, int) or (
-                    isinstance(value, str) and value.isdigit()
-                ):
-                    # Accept both int and string representations
-                    time_val = int(value)
-                    hour = time_val // 100
-                    minute = time_val % 100
-                    if 0 <= hour < 24 and 0 <= minute < 60:
-                        suffix = " am" if hour < 12 or hour == 24 else " pm"
-                        hour12 = hour % 12
-                        if hour12 == 0:
-                            hour12 = 12
-                        return f"{hour12}:{minute:02d}{suffix}"
+            if (
+                self._key.endswith("startTime") or self._key.endswith("endTime")
+            ) and (
+                isinstance(value, int) or (isinstance(value, str) and value.isdigit())
+            ):
+                # Accept both int and string representations
+                time_val = int(value)
+                hour = time_val // 100
+                minute = time_val % 100
+                if 0 <= hour < 24 and 0 <= minute < 60:
+                    suffix = " am" if hour < 12 or hour == 24 else " pm"
+                    hour12 = hour % 12
+                    if hour12 == 0:
+                        hour12 = 12
+                    return f"{hour12}:{minute:02d}{suffix}"
             # Convert RAM usage from bytes to megabytes
             if "ramUsage" in self._key and isinstance(value, (int, float)):
                 return round(value / 1024 / 1024, 2)

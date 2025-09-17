@@ -189,7 +189,10 @@ class EatonBatteryNumberEntity(CoordinatorEntity, NumberEntity):
 
 
 class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEntity):
-    """Number entity to control the House Consumption Threshold for Energy Saving Mode."""
+    """Number entity to control the House Consumption Threshold.
+    
+    Used for Energy Saving Mode.
+    """
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG

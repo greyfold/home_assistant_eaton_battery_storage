@@ -72,7 +72,7 @@ DESCRIPTIONS = [
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,  # pylint: disable=unused-argument
+    _hass: HomeAssistant,
     entry: EatonBatteryStorageConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:

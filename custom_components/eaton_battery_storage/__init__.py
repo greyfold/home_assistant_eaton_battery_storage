@@ -22,35 +22,35 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
-    Platform.SENSOR,
     Platform.BINARY_SENSOR,
-    Platform.NUMBER,
     Platform.BUTTON,
-    Platform.SWITCH,
-    Platform.SELECT,
     Platform.EVENT,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
 ]
 
 # List of PV-related sensor keys that should be disabled when has_pv=False
 PV_SENSOR_KEYS = [
+    "device.inverterNominalVpv",
     "status.energyFlow.acPvRole",
     "status.energyFlow.acPvValue",
     "status.energyFlow.dcPvRole",
     "status.energyFlow.dcPvValue",
     "status.last30daysEnergyFlow.photovoltaicProduction",
     "status.today.photovoltaicProduction",
-    "device.inverterNominalVpv",
-    "technical_status.pv1Voltage",
-    "technical_status.pv1Current",
-    "technical_status.pv2Voltage",
-    "technical_status.pv2Current",
     "technical_status.dcCurrentInjectionR",
     "technical_status.dcCurrentInjectionS",
     "technical_status.dcCurrentInjectionT",
+    "technical_status.pv1Current",
+    "technical_status.pv1Voltage",
+    "technical_status.pv2Current",
+    "technical_status.pv2Voltage",
 ]
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+async def async_setup(_hass: HomeAssistant, _config: dict) -> bool:
     """Set up Eaton Battery Storage integration."""
     return True  # Not used for config flow-based setup
 
@@ -87,7 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Add update listener for options changes
         entry.async_on_unload(entry.add_update_listener(async_update_options))
 
-        async def reload_service_handler(call):
+        async def reload_service_handler(_call):
             await async_reload_integration_platforms(hass, DOMAIN, PLATFORMS)
 
         hass.services.async_register(
