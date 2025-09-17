@@ -219,7 +219,7 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
 
 class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
     """Select entity to send immediate operation mode commands.
-    
+
     Commands sent via /api/device/command.
     """
 

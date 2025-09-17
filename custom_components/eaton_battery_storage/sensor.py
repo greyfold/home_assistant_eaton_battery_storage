@@ -753,7 +753,7 @@ class EatonXStorageSensor(
             "disabled_by_default", False
         )
         self._accuracy_warning = description.get("accuracy_warning", False)
-        self._precision = description.get("precision", None)
+        self._precision = description.get("precision")
         self._attr_unique_id = f"eaton_xstorage_{key.replace('.', '_')}"
 
     @property

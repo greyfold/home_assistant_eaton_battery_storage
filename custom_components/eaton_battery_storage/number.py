@@ -121,13 +121,13 @@ class EatonBatteryNumberEntity(CoordinatorEntity, NumberEntity):
         if self._key == "charge_power":
             watts = int(round((native_val / 100) * 3600))
             return {"wattage": watts}
-        elif self._key == "charge_power_watt":
+        if self._key == "charge_power_watt":
             percent = int(round((native_val / 3600) * 100))
             return {"percent": percent}
-        elif self._key == "discharge_power":
+        if self._key == "discharge_power":
             watts = int(round((native_val / 100) * 3600))
             return {"wattage": watts}
-        elif self._key == "discharge_power_watt":
+        if self._key == "discharge_power_watt":
             percent = int(round((native_val / 3600) * 100))
             return {"percent": percent}
         return None
@@ -168,15 +168,15 @@ class EatonBatteryNumberEntity(CoordinatorEntity, NumberEntity):
             watts = int(round((value / 100) * 3600))
             self.coordinator.number_values["charge_power_watt"] = watts
             return "charge_power_watt"
-        elif self._key == "charge_power_watt":
+        if self._key == "charge_power_watt":
             percent = int(round((value / 3600) * 100))
             self.coordinator.number_values["charge_power"] = percent
             return "charge_power"
-        elif self._key == "discharge_power":
+        if self._key == "discharge_power":
             watts = int(round((value / 100) * 3600))
             self.coordinator.number_values["discharge_power_watt"] = watts
             return "discharge_power_watt"
-        elif self._key == "discharge_power_watt":
+        if self._key == "discharge_power_watt":
             percent = int(round((value / 3600) * 100))
             self.coordinator.number_values["discharge_power"] = percent
             return "discharge_power"
@@ -190,7 +190,7 @@ class EatonBatteryNumberEntity(CoordinatorEntity, NumberEntity):
 
 class EatonXStorageHouseConsumptionThresholdNumber(CoordinatorEntity, NumberEntity):
     """Number entity to control the House Consumption Threshold.
-    
+
     Used for Energy Saving Mode.
     """
 
