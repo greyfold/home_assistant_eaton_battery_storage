@@ -13,13 +13,12 @@ Use external energy monitoring for accurate power measurements.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import json
 import logging
+from datetime import datetime, timedelta
 from typing import Any
 
 import aiohttp
-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
