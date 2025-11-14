@@ -84,7 +84,7 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": None,
-        "icon": "mdi:calendar-repeat",
+        "icon": "mdi:calendar-refresh",
     },
     "status.currentMode.type": {
         "name": "Current Mode Type",
@@ -816,10 +816,9 @@ class EatonXStorageSensor(
         self._precision = description.get("precision")
         self._attr_unique_id = f"eaton_xstorage_{key.replace('.', '_')}"
 
-        # Apply static icon from description when provided (esp. when no device_class)
-        icon_from_description = description.get("icon")
-        if icon_from_description and self._attr_device_class in (None, "none", "None"):
-            self._attr_icon = icon_from_description
+        # Apply icon from description if provided
+        if description.get("icon"):
+            self._attr_icon = description["icon"]
 
         # Set state_class for power and energy sensors
         if self._attr_device_class == "power":
