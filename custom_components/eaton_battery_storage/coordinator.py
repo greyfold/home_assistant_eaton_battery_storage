@@ -131,21 +131,28 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _LOGGER.debug("Failed to fetch %s: %s", endpoint, err)
                     results[endpoint] = {}
 
-            # Technical data that may require special permissions
-            for endpoint, method in [
-                ("technical_status", self.api.get_technical_status),
-                ("maintenance_diagnostics", self.api.get_maintenance_diagnostics),
-            ]:
-                try:
-                    data = await method()
-                    results[endpoint] = data.get("result", {}) if data else {}
-                except Exception as err:
-                    _LOGGER.debug(
-                        "Failed to fetch %s (may require technician account): %s",
-                        endpoint,
-                        err,
-                    )
-                    results[endpoint] = {}
+            # Technical data that requires technician account
+            user_type = self.config_entry.data.get("user_type", "tech")
+            if user_type == "tech":
+                for endpoint, method in [
+                    ("technical_status", self.api.get_technical_status),
+                    ("maintenance_diagnostics", self.api.get_maintenance_diagnostics),
+                ]:
+                    try:
+                        data = await method()
+                        results[endpoint] = data.get("result", {}) if data else {}
+                    except Exception as err:
+                        _LOGGER.debug(
+                            "Failed to fetch %s (may require technician account): %s",
+                            endpoint,
+                            err,
+                        )
+                        results[endpoint] = {}
+            else:
+                # Customer account - don't attempt to fetch technical endpoints
+                _LOGGER.debug("Customer account - skipping technical endpoints")
+                results["technical_status"] = {}
+                results["maintenance_diagnostics"] = {}
 
             # Notification data
             try:

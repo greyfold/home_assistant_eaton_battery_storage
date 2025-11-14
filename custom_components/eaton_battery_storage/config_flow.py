@@ -19,6 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CONF_INVERTER_SN = "inverter_sn"
 CONF_HAS_PV = "has_pv"
+CONF_USER_TYPE = "user_type"
 
 
 class EatonXStorageConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -36,71 +37,95 @@ class EatonXStorageConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the initial step (single-step flow with conditional validation)."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             host = user_input[CONF_HOST]
             username = user_input[CONF_USERNAME]
             password = user_input[CONF_PASSWORD]
-            inverter_sn = user_input[CONF_INVERTER_SN]
-            # Hardcode the email address
-            email = "anything@anything.com"
+            user_type = user_input[CONF_USER_TYPE]
+            inverter_sn = user_input.get(CONF_INVERTER_SN, "")
+            email = "anything@anything.com"  # Hardcoded per API requirements
 
-            # Set unique ID to prevent duplicates
-            await self.async_set_unique_id(f"{host}_{inverter_sn}")
-            self._abort_if_unique_id_configured()
-
-            try:
-                await self._test_connection(
-                    host, username, password, inverter_sn, email
-                )
-            except ConnectionError:
-                errors["base"] = "cannot_connect"
-            except ValueError as err:
-                # Handle specific authentication error messages
-                error_message = str(err)
-                if "Error during authentication: 10" in error_message:
-                    errors["base"] = "Error during authentication: 10"
-                elif "wrong credentials" in error_message.lower():
-                    errors["base"] = "err_wrong_credentials"
-                elif "invalid inverter" in error_message.lower():
-                    errors["base"] = "err_invalid_inverter_sn"
-                elif "non-JSON response" in error_message:
-                    errors["base"] = "Authentication failed: non-JSON response"
-                elif "unexpected response" in error_message:
-                    errors["base"] = "Authentication failed with unexpected response."
-                else:
-                    errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected error during connection test")
-                errors["base"] = "unknown"
+            # Conditional validation: inverter_sn required only for technician accounts
+            if user_type == "tech" and not inverter_sn:
+                errors[CONF_INVERTER_SN] = "required_inverter_sn"
             else:
-                # Save the hardcoded email in the config entry for consistency
-                entry_data = dict(user_input)
-                entry_data["email"] = email
-                return self.async_create_entry(
-                    title="Eaton xStorage Home", data=entry_data
-                )
+                # Set unique ID (host for customer; host+sn for technician)
+                unique_id = host if user_type == "customer" else f"{host}_{inverter_sn}"
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured()
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_HOST): sel.TextSelector(),
-                    vol.Required(CONF_USERNAME): sel.TextSelector(),
-                    vol.Required(CONF_PASSWORD): sel.TextSelector(
-                        sel.TextSelectorConfig(type=sel.TextSelectorType.PASSWORD)
-                    ),
-                    vol.Required(CONF_INVERTER_SN): sel.TextSelector(),
-                    vol.Required(CONF_HAS_PV, default=False): sel.BooleanSelector(),
-                }
-            ),
-            errors=errors,
+                try:
+                    await self._test_connection(
+                        host, username, password, inverter_sn, email, user_type
+                    )
+                except ConnectionError:
+                    errors["base"] = "cannot_connect"
+                except ValueError as err:
+                    error_message = str(err)
+                    if "Error during authentication: 10" in error_message:
+                        errors["base"] = "Error during authentication: 10"
+                    elif "wrong credentials" in error_message.lower():
+                        errors["base"] = "err_wrong_credentials"
+                    elif "invalid inverter" in error_message.lower():
+                        errors["base"] = "err_invalid_inverter_sn"
+                    elif "non-JSON response" in error_message:
+                        errors["base"] = "Authentication failed: non-JSON response"
+                    elif "unexpected response" in error_message:
+                        errors["base"] = (
+                            "Authentication failed with unexpected response."
+                        )
+                    else:
+                        errors["base"] = "invalid_auth"
+                except Exception:  # pylint: disable=broad-except
+                    _LOGGER.exception("Unexpected error during connection test")
+                    errors["base"] = "unknown"
+                else:
+                    entry_data = dict(user_input)
+                    entry_data["email"] = email
+                    return self.async_create_entry(
+                        title="Eaton xStorage Home", data=entry_data
+                    )
+
+        # Determine user_type for form defaults (prefer previously selected value)
+        user_type = (
+            user_input.get(CONF_USER_TYPE, "customer") if user_input else "customer"
         )
 
+        # Unified schema: make inverter_sn optional (validated only when technician selected)
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_HOST): sel.TextSelector(),
+                vol.Required(CONF_USER_TYPE, default=user_type): sel.SelectSelector(
+                    sel.SelectSelectorConfig(
+                        options=[
+                            sel.SelectOptionDict(value="customer", label="Customer"),
+                            sel.SelectOptionDict(value="tech", label="Technician"),
+                        ],
+                        mode=sel.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(CONF_USERNAME): sel.TextSelector(),
+                vol.Required(CONF_PASSWORD): sel.TextSelector(
+                    sel.TextSelectorConfig(type=sel.TextSelectorType.PASSWORD)
+                ),
+                vol.Optional(CONF_INVERTER_SN): sel.TextSelector(),
+                vol.Optional(CONF_HAS_PV, default=False): sel.BooleanSelector(),
+            }
+        )
+
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+
     async def _test_connection(
-        self, host: str, username: str, password: str, inverter_sn: str, email: str
+        self,
+        host: str,
+        username: str,
+        password: str,
+        inverter_sn: str,
+        email: str,
+        user_type: str = "tech",
     ) -> None:
         """Test connection to the device."""
         api = EatonBatteryAPI(
@@ -113,6 +138,7 @@ class EatonXStorageConfigFlow(ConfigFlow, domain=DOMAIN):
             app_id="com.eaton.xstoragehome",
             name="Eaton xStorage Home",
             manufacturer="Eaton",
+            user_type=user_type,
         )
 
         try:
@@ -148,77 +174,100 @@ class EatonXStorageOptionsFlow(OptionsFlow):
     ) -> FlowResult:
         """Manage the options."""
         errors: dict[str, str] = {}
-
         if user_input is not None:
-            try:
-                # Test connection with new credentials, use hardcoded email
-                await self._test_connection(
-                    user_input[CONF_HOST],
-                    user_input[CONF_USERNAME],
-                    user_input[CONF_PASSWORD],
-                    user_input[CONF_INVERTER_SN],
-                    "anything@anything.com",
-                )
-            except ConnectionError:
-                errors["base"] = "cannot_connect"
-            except ValueError as err:
-                # Handle specific authentication error messages
-                error_message = str(err)
-                if "Error during authentication: 10" in error_message:
-                    errors["base"] = "Error during authentication: 10"
-                elif "wrong credentials" in error_message.lower():
-                    errors["base"] = "err_wrong_credentials"
-                elif "invalid inverter" in error_message.lower():
-                    errors["base"] = "err_invalid_inverter_sn"
-                elif "non-JSON response" in error_message:
-                    errors["base"] = "Authentication failed: non-JSON response"
-                elif "unexpected response" in error_message:
-                    errors["base"] = "Authentication failed with unexpected response."
-                else:
-                    errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected error during connection test")
-                errors["base"] = "unknown"
+            user_type = user_input[CONF_USER_TYPE]
+            inverter_sn = user_input.get(CONF_INVERTER_SN, "")
+
+            # Conditional validation for technician inverter serial number
+            if user_type == "tech" and not inverter_sn:
+                errors[CONF_INVERTER_SN] = "required_inverter_sn"
             else:
-                # Update the config entry with new data
-                entry_data = dict(user_input)
-                entry_data["email"] = "anything@anything.com"
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=entry_data
-                )
-                return self.async_create_entry(title="", data={})
+                try:
+                    await self._test_connection(
+                        user_input[CONF_HOST],
+                        user_input[CONF_USERNAME],
+                        user_input[CONF_PASSWORD],
+                        inverter_sn,
+                        "anything@anything.com",
+                        user_type,
+                    )
+                except ConnectionError:
+                    errors["base"] = "cannot_connect"
+                except ValueError as err:
+                    error_message = str(err)
+                    if "Error during authentication: 10" in error_message:
+                        errors["base"] = "Error during authentication: 10"
+                    elif "wrong credentials" in error_message.lower():
+                        errors["base"] = "err_wrong_credentials"
+                    elif "invalid inverter" in error_message.lower():
+                        errors["base"] = "err_invalid_inverter_sn"
+                    elif "non-JSON response" in error_message:
+                        errors["base"] = "Authentication failed: non-JSON response"
+                    elif "unexpected response" in error_message:
+                        errors["base"] = (
+                            "Authentication failed with unexpected response."
+                        )
+                    else:
+                        errors["base"] = "invalid_auth"
+                except Exception:  # pylint: disable=broad-except
+                    _LOGGER.exception("Unexpected error during connection test")
+                    errors["base"] = "unknown"
+                else:
+                    entry_data = dict(user_input)
+                    entry_data["email"] = "anything@anything.com"
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=entry_data
+                    )
+                    return self.async_create_entry(title="", data={})
 
-        # Get current values from config entry
         current_data = self.config_entry.data
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_HOST, default=current_data.get(CONF_HOST, "")
-                    ): sel.TextSelector(),
-                    vol.Required(
-                        CONF_USERNAME, default=current_data.get(CONF_USERNAME, "")
-                    ): sel.TextSelector(),
-                    vol.Required(
-                        CONF_PASSWORD, default=current_data.get(CONF_PASSWORD, "")
-                    ): sel.TextSelector(
-                        sel.TextSelectorConfig(type=sel.TextSelectorType.PASSWORD)
-                    ),
-                    vol.Required(
-                        CONF_INVERTER_SN, default=current_data.get(CONF_INVERTER_SN, "")
-                    ): sel.TextSelector(),
-                    vol.Required(
-                        CONF_HAS_PV, default=current_data.get(CONF_HAS_PV, False)
-                    ): sel.BooleanSelector(),
-                }
-            ),
-            errors=errors,
+        user_type = (
+            user_input.get(CONF_USER_TYPE, current_data.get(CONF_USER_TYPE, "customer"))
+            if user_input
+            else current_data.get(CONF_USER_TYPE, "customer")
         )
 
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_HOST, default=current_data.get(CONF_HOST, "")
+                ): sel.TextSelector(),
+                vol.Required(CONF_USER_TYPE, default=user_type): sel.SelectSelector(
+                    sel.SelectSelectorConfig(
+                        options=[
+                            sel.SelectOptionDict(value="customer", label="Customer"),
+                            sel.SelectOptionDict(value="tech", label="Technician"),
+                        ],
+                        mode=sel.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_USERNAME, default=current_data.get(CONF_USERNAME, "")
+                ): sel.TextSelector(),
+                vol.Required(
+                    CONF_PASSWORD, default=current_data.get(CONF_PASSWORD, "")
+                ): sel.TextSelector(
+                    sel.TextSelectorConfig(type=sel.TextSelectorType.PASSWORD)
+                ),
+                vol.Optional(
+                    CONF_INVERTER_SN, default=current_data.get(CONF_INVERTER_SN, "")
+                ): sel.TextSelector(),
+                vol.Optional(
+                    CONF_HAS_PV, default=current_data.get(CONF_HAS_PV, False)
+                ): sel.BooleanSelector(),
+            }
+        )
+
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
     async def _test_connection(
-        self, host: str, username: str, password: str, inverter_sn: str, email: str
+        self,
+        host: str,
+        username: str,
+        password: str,
+        inverter_sn: str,
+        email: str,
+        user_type: str = "tech",
     ) -> None:
         """Test connection to the device."""
         api = EatonBatteryAPI(
@@ -231,6 +280,7 @@ class EatonXStorageOptionsFlow(OptionsFlow):
             app_id="com.eaton.xstoragehome",
             name="Eaton xStorage Home",
             manufacturer="Eaton",
+            user_type=user_type,
         )
 
         try:

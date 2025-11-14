@@ -393,6 +393,7 @@ SENSOR_TYPES = {
         "name": "DNS Server",
         "unit": None,
         "device_class": None,
+        "disabled_by_default": True,
         "entity_category": EntityCategory.DIAGNOSTIC,
     },
     "device.timezone.name": {
@@ -648,15 +649,26 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Eaton xStorage Home sensor platform."""
+    from .const import TECHNICIAN_ONLY_SENSORS
+
     coordinator: EatonXstorageHomeCoordinator = config_entry.runtime_data
     has_pv = config_entry.data.get("has_pv", False)
+    user_type = config_entry.data.get(
+        "user_type", "tech"
+    )  # Default to tech for backward compatibility
+    is_technician = user_type == "tech"
 
-    # Create sensors based on PV configuration
+    # Create sensors based on account type and PV configuration
     entities: list[EatonXStorageSensor | EatonXStorageNotificationsSensor] = []
     for key, description in SENSOR_TYPES.items():
         # Skip PV-related sensors if has_pv is False
         if description.get("pv_related", False) and not has_pv:
             continue
+
+        # Skip technician-only sensors for customer accounts
+        if key in TECHNICIAN_ONLY_SENSORS and not is_technician:
+            continue
+
         entities.append(EatonXStorageSensor(coordinator, key, description, has_pv))
 
     # Add the notifications array sensor

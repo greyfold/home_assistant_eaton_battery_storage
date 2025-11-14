@@ -39,6 +39,7 @@ class EatonBatteryAPI:
         app_id: str,
         name: str,
         manufacturer: str,
+        user_type: str = "tech",
     ) -> None:
         """Initialize the API client."""
         self.hass = hass
@@ -50,6 +51,7 @@ class EatonBatteryAPI:
         self.app_id = app_id
         self.name = name
         self.manufacturer = manufacturer
+        self.user_type = user_type  # "customer" or "tech"
         self.access_token: str | None = None
         self.token_expiration: datetime | None = None
         self.store = Store(hass, 1, f"{host}_token")
@@ -57,13 +59,18 @@ class EatonBatteryAPI:
     async def connect(self) -> None:
         """Authenticate with the device and get access token."""
         url = f"https://{self.host}/api/auth/signin"
+
+        # Build payload based on user type
         payload = {
             "username": self.username,
             "pwd": self.password,
-            "inverterSn": self.inverter_sn,
-            "email": self.email,
-            "userType": "tech",
+            "userType": self.user_type,
         }
+
+        # Only include inverterSn and email for technician accounts
+        if self.user_type == "tech":
+            payload["inverterSn"] = self.inverter_sn
+            payload["email"] = self.email
 
         async with aiohttp.ClientSession() as session:
             try:

@@ -60,16 +60,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("Setting up Eaton xStorage Home from config entry")
 
     try:
+        # Get user type, defaulting to tech for backward compatibility
+        user_type = entry.data.get("user_type", "tech")
+
         api = EatonBatteryAPI(
             username=entry.data["username"],
             password=entry.data["password"],
-            inverter_sn=entry.data["inverter_sn"],
-            email=entry.data["email"],
+            inverter_sn=entry.data.get("inverter_sn", ""),
+            email=entry.data.get("email", ""),
             hass=hass,
             host=entry.data["host"],
             app_id="com.eaton.xstoragehome",
             name="Eaton xStorage Home",
             manufacturer="Eaton",
+            user_type=user_type,
         )
         await api.connect()
 
@@ -107,6 +111,7 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
     await async_migrate_pv_sensors(hass, entry)
 
     # Reload the integration to apply new settings
+    # This will recreate sensors based on the new user_type
     await hass.config_entries.async_reload(entry.entry_id)
 
 

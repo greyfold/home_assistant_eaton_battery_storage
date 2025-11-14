@@ -2,15 +2,17 @@
   "config": {
     "step": {
       "user": {
-        "description": "Configure your Eaton xStorage Home system with technician credentials. Enable PV sensors only if you have solar panels connected to your system.",
+        "description": "Configure your Eaton xStorage Home system. Choose Customer for basic access or Technician for advanced diagnostics (requires technician credentials and inverter serial number).",
         "data": {
           "host": "Device IP Address or Hostname",
-          "username": "Technician Username",
-          "password": "Technician Password",
-          "inverter_sn": "Inverter Serial Number",
+          "user_type": "Account Type",
+          "username": "Username",
+          "password": "Password",
+          "inverter_sn": "Inverter Serial Number (Technician only)",
           "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
         },
         "data_description": {
+          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials (default: admin/jlwgK41G).",
           "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels."
         }
       }
@@ -23,6 +25,7 @@
       "Error during authentication: 10": "An error occurred. Your account was locked due to too many failed login attempts. You will be allowed to try again in 10 minutes.",
       "Authentication failed with unexpected response.": "Authentication failed with unexpected response.",
       "Authentication failed: non-JSON response": "Authentication failed: non-JSON response.",
+      "required_inverter_sn": "Inverter serial number required for technician account.",
       "unknown": "Unexpected error occurred during setup."
     },
     "abort": {
@@ -32,15 +35,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "Update your Eaton xStorage Home configuration. Changes require technician credentials verification. Enable PV sensors only if you have solar panels connected to your system.",
+        "description": "Update your Eaton xStorage Home configuration. Choose Customer for basic access or Technician for advanced diagnostics. Enable PV sensors only if you have solar panels connected to your system.",
         "data": {
           "host": "Device IP Address or Hostname",
-          "username": "Technician Username",
-          "password": "Technician Password",
-          "inverter_sn": "Inverter Serial Number",
+          "user_type": "Account Type",
+          "username": "Username",
+          "password": "Password",
+          "inverter_sn": "Inverter Serial Number (Technician only)",
           "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
         },
         "data_description": {
+          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials.",
           "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels."
         }
       }
@@ -53,6 +58,7 @@
       "Error during authentication: 10": "An error occurred. Your account was locked due to too many failed login attempts. You will be allowed to try again in 10 minutes.",
       "Authentication failed with unexpected response.": "Authentication failed with unexpected response.",
       "Authentication failed: non-JSON response": "Authentication failed: non-JSON response.",
+      "required_inverter_sn": "Inverter serial number required for technician account.",
       "unknown": "Unexpected error occurred during setup."
     }
   }

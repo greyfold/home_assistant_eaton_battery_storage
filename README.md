@@ -69,57 +69,134 @@ The available documentation provides 4 steps to setup an Eaton xStorage Hybrid u
 
 ## Entities provided by this integration
 
-| Type          | Key                                           | Name                            | Unit |
-| ------------- | --------------------------------------------- | ------------------------------- | ---- |
-| sensor        | `currentMode.command`                         | Current Mode Command            | -    |
-| sensor        | `energyFlow.acPvRole`                         | AC PV Role                      | -    |
-| sensor        | `energyFlow.acPvValue`                        | AC PV Value                     | W    |
-| sensor        | `energyFlow.batteryBackupLevel`               | Battery Backup Level            | %    |
-| sensor        | `energyFlow.batteryStatus`                    | Battery Status                  | -    |
-| sensor        | `energyFlow.batteryEnergyFlow`                | Battery Power                   | W    |
-| sensor        | `energyFlow.criticalLoadRole`                 | Critical Load Role              | -    |
-| sensor        | `energyFlow.criticalLoadValue`                | Critical Load Value             | W    |
-| sensor        | `energyFlow.dcPvRole`                         | DC PV Role                      | -    |
-| sensor        | `energyFlow.dcPvValue`                        | DC PV Value                     | W    |
-| sensor        | `energyFlow.gridRole`                         | Grid Role                       | -    |
-| sensor        | `energyFlow.gridValue`                        | Grid Power                      | W    |
-| sensor        | `energyFlow.nonCriticalLoadRole`              | Non-Critical Load Role          | -    |
-| sensor        | `energyFlow.nonCriticalLoadValue`             | Non-Critical Load Value         | W    |
-| sensor        | `energyFlow.operationMode`                    | Operation Mode                  | -    |
-| sensor        | `energyFlow.selfConsumption`                  | Self Consumption                | W    |
-| sensor        | `energyFlow.selfSufficiency`                  | Self Sufficiency                | %    |
-| sensor        | `energyFlow.stateOfCharge`                    | Battery State of Charge         | %    |
-| sensor        | `energyFlow.energySavingModeEnabled`          | Energy Saving Mode Enabled      | -    |
-| sensor        | `energyFlow.energySavingModeActivated`        | Energy Saving Mode Activated    | -    |
-| sensor        | `last30daysEnergyFlow.gridConsumption`        | 30 Days Grid Consumption        | W    |
-| sensor        | `last30daysEnergyFlow.photovoltaicProduction` | 30 Days PV Production           | W    |
-| sensor        | `last30daysEnergyFlow.selfConsumption`        | 30 Days Self Consumption        | %    |
-| sensor        | `last30daysEnergyFlow.selfSufficiency`        | 30 Days Self Sufficiency        | %    |
-| sensor        | `today.gridConsumption`                       | Today's Grid Consumption        | W    |
-| sensor        | `today.photovoltaicProduction`                | Today's PV Production           | W    |
-| sensor        | `today.selfConsumption`                       | Today's Self Consumption        | %    |
-| sensor        | `today.selfSufficiency`                       | Today's Self Sufficiency        | %    |
-| binary_sensor | `status.energyFlow.batteryStatus_charging`    | Battery Charging                | -    |
-| binary_sensor | `status.energyFlow.batteryStatus_discharging` | Battery Discharging             | -    |
-| binary_sensor | `device.powerState`                           | Inverter Power State            | -    |
-| binary_sensor | `notifications.has_unread`                    | Has Unread Notifications        | -    |
-| switch        | -                                             | Inverter Power                  | -    |
-| switch        | -                                             | Energy Saving Mode              | -    |
-| select        | -                                             | Default Operation Mode          | -    |
-| select        | -                                             | Current Operation Mode          | -    |
-| number        | `charge_end_soc`                              | Charge Target SOC               | %    |
-| number        | `charge_power`                                | Charge power                    | %    |
-| number        | `charge_power_watt`                           | Charge power                    | W    |
-| number        | `charge_duration`                             | Charge duration                 | h    |
-| number        | `discharge_end_soc`                           | Discharge Target SOC            | %    |
-| number        | `discharge_power`                             | Discharge power                 | %    |
-| number        | `discharge_power_watt`                        | Discharge power                 | W    |
-| number        | `discharge_duration`                          | Discharge duration              | h    |
-| number        | `run_duration`                                | Run duration                    | h    |
-| number        | -                                             | Set House Consumption Threshold | W    |
-| number        | -                                             | Set Battery Backup Level        | %    |
-| button        | -                                             | Mark All Notifications Read     | -    |
-| button        | -                                             | Stop Current Operation          | -    |
+> **Note:** This integration provides different entities based on your account type (Customer vs Technician) and configuration (PV enabled). See [Account Type Support](ACCOUNT_TYPE_SUPPORT.md) for more details.
+
+### Core Entities (Available to all account types)
+
+| Type          | Name                            | Unit | Default  | Comment                                                  |
+| ------------- | ------------------------------- | ---- | -------- | -------------------------------------------------------- |
+| sensor        | Battery State of Charge         | %    | Enabled  | Current battery charge level                             |
+| sensor        | Battery Status                  | -    | Enabled  | Charging/Discharging/Idle state                          |
+| sensor        | Battery Power                   | W    | Enabled  | Positive=discharge, negative=charge                      |
+| sensor        | Battery Backup Level            | %    | Disabled | Minimum SOC reserved for backup power                    |
+| sensor        | Grid Power                      | W    | Enabled  | Grid consumption/injection (⚠️ accuracy warning applies) |
+| sensor        | Grid Role                       | -    | Enabled  | Supplying/Consuming/None                                 |
+| sensor        | Operation Mode                  | -    | Enabled  | Current operation mode                                   |
+| sensor        | Self Consumption                | %    | Enabled  | Percentage of PV energy used directly                    |
+| sensor        | Self Sufficiency                | %    | Enabled  | Percentage of energy needs met by PV                     |
+| sensor        | Critical Load Role              | -    | Enabled  | Critical loads status                                    |
+| sensor        | Critical Load Value             | W    | Enabled  | Power to critical loads                                  |
+| sensor        | Non-Critical Load Role          | -    | Enabled  | Non-critical loads status                                |
+| sensor        | Non-Critical Load Value         | W    | Enabled  | Power to non-critical loads                              |
+| sensor        | Energy Saving Mode Enabled      | -    | Enabled  | Energy saving mode configuration                         |
+| sensor        | Energy Saving Mode Activated    | -    | Enabled  | Energy saving mode active status                         |
+| sensor        | Current Mode Command            | -    | Enabled  | Active operation mode command                            |
+| sensor        | Current Mode Duration           | h    | Enabled  | Duration of current mode                                 |
+| sensor        | Current Mode Type               | -    | Enabled  | Manual or Scheduled                                      |
+| sensor        | Current Mode Recurrence         | -    | Enabled  | Daily/Weekly/Manual Event                                |
+| sensor        | Current Mode Power              | %    | Enabled  | Power setting for current mode                           |
+| sensor        | Current Mode SOC                | %    | Enabled  | Target SOC for current mode                              |
+| sensor        | Current Mode Action             | -    | Enabled  | Charge/Discharge action                                  |
+| sensor        | Current Mode Start Time         | -    | Enabled  | Start time of current mode                               |
+| sensor        | Current Mode End Time           | -    | Enabled  | End time of current mode                                 |
+| sensor        | Today's Grid Consumption        | kWh  | Disabled | Grid energy consumed today                               |
+| sensor        | Today's Self Consumption        | %    | Disabled | Self-consumption percentage today                        |
+| sensor        | Today's Self Sufficiency        | %    | Disabled | Self-sufficiency percentage today                        |
+| sensor        | 30 Days Grid Consumption        | kWh  | Disabled | Grid consumption last 30 days                            |
+| sensor        | 30 Days Self Consumption        | %    | Disabled | Self-consumption last 30 days                            |
+| sensor        | 30 Days Self Sufficiency        | %    | Disabled | Self-sufficiency last 30 days                            |
+| sensor        | Total Notifications Count       | -    | Enabled  | Number of system notifications                           |
+| sensor        | Unread Notifications Count      | -    | Enabled  | Number of unread notifications                           |
+| sensor        | BMS Capacity                    | kWh  | Enabled  | Total battery capacity                                   |
+| sensor        | BMS Firmware Version            | -    | Enabled  | Battery management system version                        |
+| sensor        | BMS Model                       | -    | Enabled  | Battery model designation                                |
+| sensor        | BMS Serial Number               | -    | Enabled  | Battery serial number                                    |
+| sensor        | Firmware Version                | -    | Enabled  | System firmware version                                  |
+| sensor        | Inverter Firmware Version       | -    | Enabled  | Inverter firmware version                                |
+| sensor        | Inverter Manufacturer           | -    | Enabled  | Inverter manufacturer                                    |
+| sensor        | Inverter Model Name             | -    | Enabled  | Inverter model                                           |
+| sensor        | Inverter Serial Number          | -    | Enabled  | Inverter serial number                                   |
+| sensor        | Inverter VA Rating              | VA   | Enabled  | Inverter power rating                                    |
+| sensor        | Bundle Version                  | -    | Enabled  | Software bundle version                                  |
+| sensor        | Device Timezone                 | -    | Enabled  | System timezone setting                                  |
+| sensor        | DNS Server                      | -    | Disabled | DNS server address                                       |
+| sensor        | House Consumption Threshold     | W    | Enabled  | Energy saving mode threshold                             |
+| sensor        | Local Portal Remote ID          | -    | Enabled  | Remote portal identifier                                 |
+| binary_sensor | Battery Charging                | -    | Enabled  | True when battery is charging                            |
+| binary_sensor | Battery Discharging             | -    | Enabled  | True when battery is discharging                         |
+| binary_sensor | Inverter Power State            | -    | Enabled  | Inverter on/off state                                    |
+| binary_sensor | Has Unread Notifications        | -    | Enabled  | True if unread notifications exist                       |
+| switch        | Inverter Power                  | -    | Enabled  | Control inverter power on/off                            |
+| switch        | Energy Saving Mode              | -    | Enabled  | Enable/disable energy saving mode                        |
+| select        | Default Operation Mode          | -    | Enabled  | Set default operation mode                               |
+| select        | Current Operation Mode          | -    | Enabled  | Change current operation mode                            |
+| number        | Charge Target SOC               | %    | Enabled  | Target SOC for manual charge                             |
+| number        | Charge Power (%)                | %    | Enabled  | Charging power percentage (5-100%)                       |
+| number        | Charge Power (Watts)            | W    | Enabled  | Charging power in watts                                  |
+| number        | Charge Duration                 | h    | Enabled  | Duration for manual charge (1-12h)                       |
+| number        | Discharge Target SOC            | %    | Enabled  | Target SOC for manual discharge                          |
+| number        | Discharge Power (%)             | %    | Enabled  | Discharge power percentage (5-100%)                      |
+| number        | Discharge Power (Watts)         | W    | Enabled  | Discharge power in watts                                 |
+| number        | Discharge Duration              | h    | Enabled  | Duration for manual discharge (1-12h)                    |
+| number        | Run Duration                    | h    | Enabled  | Duration for basic mode (1-12h)                          |
+| number        | Set House Consumption Threshold | W    | Enabled  | Configure energy saving threshold (300-1000W)            |
+| number        | Set Battery Backup Level        | %    | Enabled  | Configure minimum backup SOC (0-100%)                    |
+| button        | Mark All Notifications Read     | -    | Enabled  | Mark all notifications as read                           |
+| button        | Stop Current Operation          | -    | Enabled  | Stop current manual operation                            |
+| event         | Notification Event              | -    | Enabled  | Fires when new notifications are detected                |
+
+### PV-Related Entities (Only created when PV is enabled during setup)
+
+| Type   | Name                   | Unit | Default | Comment                                            |
+| ------ | ---------------------- | ---- | ------- | -------------------------------------------------- |
+| sensor | AC PV Role             | -    | Enabled | AC-coupled PV status                               |
+| sensor | AC PV Value            | W    | Enabled | AC-coupled PV power (⚠️ accuracy warning applies)  |
+| sensor | DC PV Role             | -    | Enabled | DC-coupled PV status                               |
+| sensor | DC PV Value            | W    | Enabled | DC-coupled PV power (⚠️ accuracy warning applies)  |
+| sensor | Inverter Nominal VPV   | V    | Enabled | Nominal PV voltage                                 |
+| sensor | Today's PV Production  | kWh  | Enabled | PV energy generated today                          |
+| sensor | 30 Days PV Production  | kWh  | Enabled | PV energy generated last 30 days                   |
+| sensor | PV1 Voltage            | V    | Enabled | PV string 1 voltage (technician account required)  |
+| sensor | PV1 Current            | A    | Enabled | PV string 1 current (technician account required)  |
+| sensor | PV2 Voltage            | V    | Enabled | PV string 2 voltage (technician account required)  |
+| sensor | PV2 Current            | A    | Enabled | PV string 2 current (technician account required)  |
+| sensor | DC Current Injection R | mA   | Enabled | DC injection R phase (technician account required) |
+| sensor | DC Current Injection S | mA   | Enabled | DC injection S phase (technician account required) |
+| sensor | DC Current Injection T | mA   | Enabled | DC injection T phase (technician account required) |
+
+### Technician Account Only Entities (Require technician login credentials)
+
+| Type   | Name                            | Unit | Default | Comment                                     |
+| ------ | ------------------------------- | ---- | ------- | ------------------------------------------- |
+| sensor | Grid Voltage                    | V    | Enabled | AC grid voltage                             |
+| sensor | Grid Frequency                  | Hz   | Enabled | AC grid frequency                           |
+| sensor | Grid Code                       | -    | Enabled | Grid connection standard                    |
+| sensor | Current To Grid                 | A    | Enabled | Current flow to/from grid                   |
+| sensor | Inverter Power                  | W    | Enabled | Inverter power output                       |
+| sensor | Inverter Temperature            | °C   | Enabled | Inverter operating temperature              |
+| sensor | Bus Voltage                     | V    | Enabled | DC bus voltage                              |
+| sensor | Technical Inverter Model        | -    | Enabled | Detailed inverter model                     |
+| sensor | Technical Inverter Power Rating | W    | Enabled | Inverter power rating                       |
+| sensor | Inverter Bootloader Version     | -    | Enabled | Inverter bootloader version                 |
+| sensor | TIDA Protocol Version           | -    | Enabled | TIDA protocol version                       |
+| sensor | Technical Operation Mode        | -    | Enabled | Detailed operation mode                     |
+| sensor | BMS Voltage                     | V    | Enabled | Battery pack voltage                        |
+| sensor | BMS Current                     | A    | Enabled | Battery pack current                        |
+| sensor | BMS Temperature                 | °C   | Enabled | Battery temperature                         |
+| sensor | BMS Average Temperature         | °C   | Enabled | Average battery cell temperature            |
+| sensor | BMS Max Temperature             | °C   | Enabled | Maximum battery cell temperature            |
+| sensor | BMS Min Temperature             | °C   | Enabled | Minimum battery cell temperature            |
+| sensor | BMS State                       | -    | Enabled | Battery state (charging/discharging/idle)   |
+| sensor | Technical BMS State of Charge   | %    | Enabled | Technical SOC reading                       |
+| sensor | BMS Total Charge                | kWh  | Enabled | Lifetime energy charged                     |
+| sensor | BMS Total Discharge             | kWh  | Enabled | Lifetime energy discharged                  |
+| sensor | BMS Highest Cell Voltage        | mV   | Enabled | Highest individual cell voltage             |
+| sensor | BMS Lowest Cell Voltage         | mV   | Enabled | Lowest individual cell voltage              |
+| sensor | BMS Cell Voltage Delta          | mV   | Enabled | Difference between highest and lowest cells |
+| sensor | BMS Fault Code                  | -    | Enabled | Battery fault code (if any)                 |
+| sensor | System CPU Usage                | %    | Enabled | Controller CPU utilization                  |
+| sensor | System RAM Total                | MB   | Enabled | Total system memory                         |
+| sensor | System RAM Used                 | MB   | Enabled | Used system memory                          |
 
 ### Notifications sensor
 
