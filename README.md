@@ -69,57 +69,57 @@ The available documentation provides 4 steps to setup an Eaton xStorage Hybrid u
 
 ## Entities provided by this integration
 
-| Type | Key | Name | Unit |
-|------|-----|------|------|
-| sensor | `currentMode.command` | Current Mode Command | - |
-| sensor | `energyFlow.acPvRole` | AC PV Role | - |
-| sensor | `energyFlow.acPvValue` | AC PV Value | W |
-| sensor | `energyFlow.batteryBackupLevel` | Battery Backup Level | % |
-| sensor | `energyFlow.batteryStatus` | Battery Status | - |
-| sensor | `energyFlow.batteryEnergyFlow` | Battery Power | W |
-| sensor | `energyFlow.criticalLoadRole` | Critical Load Role | - |
-| sensor | `energyFlow.criticalLoadValue` | Critical Load Value | W |
-| sensor | `energyFlow.dcPvRole` | DC PV Role | - |
-| sensor | `energyFlow.dcPvValue` | DC PV Value | W |
-| sensor | `energyFlow.gridRole` | Grid Role | - |
-| sensor | `energyFlow.gridValue` | Grid Power | W |
-| sensor | `energyFlow.nonCriticalLoadRole` | Non-Critical Load Role | - |
-| sensor | `energyFlow.nonCriticalLoadValue` | Non-Critical Load Value | W |
-| sensor | `energyFlow.operationMode` | Operation Mode | - |
-| sensor | `energyFlow.selfConsumption` | Self Consumption | W |
-| sensor | `energyFlow.selfSufficiency` | Self Sufficiency | % |
-| sensor | `energyFlow.stateOfCharge` | Battery State of Charge | % |
-| sensor | `energyFlow.energySavingModeEnabled` | Energy Saving Mode Enabled | - |
-| sensor | `energyFlow.energySavingModeActivated` | Energy Saving Mode Activated | - |
-| sensor | `last30daysEnergyFlow.gridConsumption` | 30 Days Grid Consumption | W |
-| sensor | `last30daysEnergyFlow.photovoltaicProduction` | 30 Days PV Production | W |
-| sensor | `last30daysEnergyFlow.selfConsumption` | 30 Days Self Consumption | % |
-| sensor | `last30daysEnergyFlow.selfSufficiency` | 30 Days Self Sufficiency | % |
-| sensor | `today.gridConsumption` | Today's Grid Consumption | W |
-| sensor | `today.photovoltaicProduction` | Today's PV Production | W |
-| sensor | `today.selfConsumption` | Today's Self Consumption | % |
-| sensor | `today.selfSufficiency` | Today's Self Sufficiency | % |
-| binary_sensor | `status.energyFlow.batteryStatus_charging` | Battery Charging | - |
-| binary_sensor | `status.energyFlow.batteryStatus_discharging` | Battery Discharging | - |
-| binary_sensor | `device.powerState` | Inverter Power State | - |
-| binary_sensor | `notifications.has_unread` | Has Unread Notifications | - |
-| switch | - | Inverter Power | - |
-| switch | - | Energy Saving Mode | - |
-| select | - | Default Operation Mode | - |
-| select | - | Current Operation Mode | - |
-| number | `charge_end_soc` | Charge end state of charge | % |
-| number | `charge_power` | Charge power | % |
-| number | `charge_power_watt` | Charge power | W |
-| number | `charge_duration` | Charge duration | h |
-| number | `discharge_end_soc` | Discharge end state of charge | % |
-| number | `discharge_power` | Discharge power | % |
-| number | `discharge_power_watt` | Discharge power | W |
-| number | `discharge_duration` | Discharge duration | h |
-| number | `run_duration` | Run duration | h |
-| number | - | Set House Consumption Threshold | W |
-| number | - | Set Battery Backup Level | % |
-| button | - | Mark All Notifications Read | - |
-| button | - | Stop Current Operation | - |
+| Type          | Key                                           | Name                            | Unit |
+| ------------- | --------------------------------------------- | ------------------------------- | ---- |
+| sensor        | `currentMode.command`                         | Current Mode Command            | -    |
+| sensor        | `energyFlow.acPvRole`                         | AC PV Role                      | -    |
+| sensor        | `energyFlow.acPvValue`                        | AC PV Value                     | W    |
+| sensor        | `energyFlow.batteryBackupLevel`               | Battery Backup Level            | %    |
+| sensor        | `energyFlow.batteryStatus`                    | Battery Status                  | -    |
+| sensor        | `energyFlow.batteryEnergyFlow`                | Battery Power                   | W    |
+| sensor        | `energyFlow.criticalLoadRole`                 | Critical Load Role              | -    |
+| sensor        | `energyFlow.criticalLoadValue`                | Critical Load Value             | W    |
+| sensor        | `energyFlow.dcPvRole`                         | DC PV Role                      | -    |
+| sensor        | `energyFlow.dcPvValue`                        | DC PV Value                     | W    |
+| sensor        | `energyFlow.gridRole`                         | Grid Role                       | -    |
+| sensor        | `energyFlow.gridValue`                        | Grid Power                      | W    |
+| sensor        | `energyFlow.nonCriticalLoadRole`              | Non-Critical Load Role          | -    |
+| sensor        | `energyFlow.nonCriticalLoadValue`             | Non-Critical Load Value         | W    |
+| sensor        | `energyFlow.operationMode`                    | Operation Mode                  | -    |
+| sensor        | `energyFlow.selfConsumption`                  | Self Consumption                | W    |
+| sensor        | `energyFlow.selfSufficiency`                  | Self Sufficiency                | %    |
+| sensor        | `energyFlow.stateOfCharge`                    | Battery State of Charge         | %    |
+| sensor        | `energyFlow.energySavingModeEnabled`          | Energy Saving Mode Enabled      | -    |
+| sensor        | `energyFlow.energySavingModeActivated`        | Energy Saving Mode Activated    | -    |
+| sensor        | `last30daysEnergyFlow.gridConsumption`        | 30 Days Grid Consumption        | W    |
+| sensor        | `last30daysEnergyFlow.photovoltaicProduction` | 30 Days PV Production           | W    |
+| sensor        | `last30daysEnergyFlow.selfConsumption`        | 30 Days Self Consumption        | %    |
+| sensor        | `last30daysEnergyFlow.selfSufficiency`        | 30 Days Self Sufficiency        | %    |
+| sensor        | `today.gridConsumption`                       | Today's Grid Consumption        | W    |
+| sensor        | `today.photovoltaicProduction`                | Today's PV Production           | W    |
+| sensor        | `today.selfConsumption`                       | Today's Self Consumption        | %    |
+| sensor        | `today.selfSufficiency`                       | Today's Self Sufficiency        | %    |
+| binary_sensor | `status.energyFlow.batteryStatus_charging`    | Battery Charging                | -    |
+| binary_sensor | `status.energyFlow.batteryStatus_discharging` | Battery Discharging             | -    |
+| binary_sensor | `device.powerState`                           | Inverter Power State            | -    |
+| binary_sensor | `notifications.has_unread`                    | Has Unread Notifications        | -    |
+| switch        | -                                             | Inverter Power                  | -    |
+| switch        | -                                             | Energy Saving Mode              | -    |
+| select        | -                                             | Default Operation Mode          | -    |
+| select        | -                                             | Current Operation Mode          | -    |
+| number        | `charge_end_soc`                              | Charge Target SOC               | %    |
+| number        | `charge_power`                                | Charge power                    | %    |
+| number        | `charge_power_watt`                           | Charge power                    | W    |
+| number        | `charge_duration`                             | Charge duration                 | h    |
+| number        | `discharge_end_soc`                           | Discharge Target SOC            | %    |
+| number        | `discharge_power`                             | Discharge power                 | %    |
+| number        | `discharge_power_watt`                        | Discharge power                 | W    |
+| number        | `discharge_duration`                          | Discharge duration              | h    |
+| number        | `run_duration`                                | Run duration                    | h    |
+| number        | -                                             | Set House Consumption Threshold | W    |
+| number        | -                                             | Set Battery Backup Level        | %    |
+| button        | -                                             | Mark All Notifications Read     | -    |
+| button        | -                                             | Stop Current Operation          | -    |
 
 ### Notifications sensor
 

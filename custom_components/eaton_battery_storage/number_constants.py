@@ -31,7 +31,7 @@ class NumberEntityDefinition(TypedDict):
 NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     {
         "key": CHARGE_DURATION,
-        "name": "Chg Dur",
+        "name": "Charge Duration",
         "min": 1,
         "max": 12,
         "step": 1,
@@ -40,7 +40,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": CHARGE_END_SOC,
-        "name": "Chg SOC",
+        "name": "Charge Target SOC",
         "min": 0,
         "max": 100,
         "step": 1,
@@ -49,7 +49,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": CHARGE_POWER,
-        "name": "Chg Pwr (%)",
+        "name": "Charge Power (%)",
         "min": 5,
         "max": 100,
         "step": 1,
@@ -58,7 +58,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": CHARGE_POWER_WATT,
-        "name": "Chg Pwr (W)",
+        "name": "Charge Power (Watt)",
         "min": 180,
         "max": 3600,
         "step": 1,
@@ -67,7 +67,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": DISCHARGE_DURATION,
-        "name": "Dischg Dur",
+        "name": "Discharge Duration",
         "min": 1,
         "max": 12,
         "step": 1,
@@ -76,7 +76,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": DISCHARGE_END_SOC,
-        "name": "Dischg SOC",
+        "name": "Discharge Target SOC",
         "min": 0,
         "max": 100,
         "step": 1,
@@ -85,7 +85,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": DISCHARGE_POWER,
-        "name": "Dischg Pwr (%)",
+        "name": "Discharge Power (%)",
         "min": 5,
         "max": 100,
         "step": 1,
@@ -94,7 +94,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": DISCHARGE_POWER_WATT,
-        "name": "Dischg Pwr (W)",
+        "name": "Discharge Power (Watt)",
         "min": 180,
         "max": 3600,
         "step": 1,
@@ -103,7 +103,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     },
     {
         "key": RUN_DURATION,
-        "name": "Run Dur",
+        "name": "Run Duration",
         "min": 1,
         "max": 12,
         "step": 1,
