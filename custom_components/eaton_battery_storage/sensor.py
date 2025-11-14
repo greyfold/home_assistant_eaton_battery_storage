@@ -837,7 +837,8 @@ class EatonXStorageSensor(
 
             # Filter out values below 1000mV for BMS cell voltage sensors
             if (
-                self._key in [
+                self._key
+                in [
                     "technical_status.bmsHighestCellVoltage",
                     "technical_status.bmsLowestCellVoltage",
                 ]
@@ -848,6 +849,25 @@ class EatonXStorageSensor(
                     "BMS cell voltage %s below 1000mV threshold: %smV - treating as error",
                     self._key,
                     value,
+                )
+                return None
+
+            # Filter out invalid 0 values for BMS temperature and charge/discharge sensors
+            # These sensors sometimes incorrectly return 0 and should be ignored
+            if (
+                self._key
+                in [
+                    "technical_status.bmsMaxTemperature",
+                    "technical_status.bmsMinTemperature",
+                    "technical_status.bmsTotalCharge",
+                    "technical_status.bmsTotalDischarge",
+                ]
+                and isinstance(value, (int, float))
+                and value == 0
+            ):
+                _LOGGER.debug(
+                    "BMS sensor %s returned invalid value 0 - ignoring",
+                    self._key,
                 )
                 return None
 
@@ -902,9 +922,7 @@ class EatonXStorageSensor(
                 return round(value, 1)
 
             # Format startTime and endTime to 12-hour format
-            if (
-                self._key.endswith("startTime") or self._key.endswith("endTime")
-            ) and (
+            if (self._key.endswith("startTime") or self._key.endswith("endTime")) and (
                 isinstance(value, int) or (isinstance(value, str) and value.isdigit())
             ):
                 # Accept both int and string representations
