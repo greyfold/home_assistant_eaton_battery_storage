@@ -85,18 +85,13 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
             self._optimistic_state = True
             self.async_write_ha_state()
 
-            result = await self.coordinator.api.set_device_power(True)
-
-            if result.get("successful"):
-                _LOGGER.info("Successfully turned on Eaton xStorage Home device")
-                # Wait a bit for the device to actually change state
-                await asyncio.sleep(3)
-            else:
-                _LOGGER.warning(
-                    "API call completed but may not have succeeded: %s", result
-                )
-                # Still wait a bit in case it worked despite the response
-                await asyncio.sleep(2)
+            # Send the command, but don't expect a response
+            await self.coordinator.api.set_device_power(True)
+            _LOGGER.info(
+                "Sent turn ON command to Eaton xStorage Home device (no response expected)"
+            )
+            # Wait a bit for the device to actually change state
+            await asyncio.sleep(3)
 
             # Always refresh the coordinator data after attempting to change power state
             await self.coordinator.async_request_refresh()
@@ -118,18 +113,13 @@ class EatonXStoragePowerSwitch(CoordinatorEntity, SwitchEntity):
             self._optimistic_state = False
             self.async_write_ha_state()
 
-            result = await self.coordinator.api.set_device_power(False)
-
-            if result.get("successful"):
-                _LOGGER.info("Successfully turned off Eaton xStorage Home device")
-                # Wait a bit for the device to actually change state
-                await asyncio.sleep(3)
-            else:
-                _LOGGER.warning(
-                    "API call completed but may not have succeeded: %s", result
-                )
-                # Still wait a bit in case it worked despite the response
-                await asyncio.sleep(2)
+            # Send the command, but don't expect a response
+            await self.coordinator.api.set_device_power(False)
+            _LOGGER.info(
+                "Sent turn OFF command to Eaton xStorage Home device (no response expected)"
+            )
+            # Wait a bit for the device to actually change state
+            await asyncio.sleep(3)
 
             # Always refresh the coordinator data after attempting to change power state
             await self.coordinator.async_request_refresh()
