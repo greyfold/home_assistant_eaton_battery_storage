@@ -97,20 +97,36 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Fetch all endpoints, handling errors gracefully
             results: dict[str, Any] = {}
 
-            # Core data that should always be available
-            try:
-                status = await self.api.get_status()
-                results["status"] = status.get("result", {}) if status else {}
-            except Exception as err:
-                _LOGGER.warning("Failed to fetch status: %s", err)
-                results["status"] = {}
+            # Core data that should always be available; if these fail,
+            # consider the device offline and raise UpdateFailed so entities
+            # become unavailable until it recovers.
+            status = await self.api.get_status()
+            if not status or (
+                isinstance(status, dict)
+                and status.get("successful") is False
+                and not status.get("result")
+            ):
+                err_msg = status.get("error") if isinstance(status, dict) else "no data"
+                raise UpdateFailed(
+                    f"Error communicating with device (status): {err_msg}"
+                )
+            results["status"] = (
+                status.get("result", {}) if isinstance(status, dict) else status
+            )
 
-            try:
-                device = await self.api.get_device()
-                results["device"] = device.get("result", {}) if device else {}
-            except Exception as err:
-                _LOGGER.warning("Failed to fetch device info: %s", err)
-                results["device"] = {}
+            device = await self.api.get_device()
+            if not device or (
+                isinstance(device, dict)
+                and device.get("successful") is False
+                and not device.get("result")
+            ):
+                err_msg = device.get("error") if isinstance(device, dict) else "no data"
+                raise UpdateFailed(
+                    f"Error communicating with device (device): {err_msg}"
+                )
+            results["device"] = (
+                device.get("result", {}) if isinstance(device, dict) else device
+            )
 
             # Additional data that may not always be available
             for endpoint, method in [

@@ -76,7 +76,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             manufacturer="Eaton",
             user_type=user_type,
         )
-        await api.connect()
+        # Attempt initial connection; if device is unreachable or auth fails,
+        # signal Home Assistant to retry setup later instead of crashing setup
+        try:
+            await api.connect()
+        except Exception as err:
+            raise ConfigEntryNotReady(f"Device not reachable: {err}") from err
 
         coordinator = EatonXstorageHomeCoordinator(hass, api, entry)
         try:
@@ -106,9 +111,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DOMAIN, SERVICE_RELOAD, reload_service_handler, schema=vol.Schema({})
         )
 
+    except ConfigEntryNotReady:
+        # Propagate without extra stack trace to avoid noisy duplicate logs
+        raise
     except Exception as ex:
-        _LOGGER.exception("Failed to set up Eaton xStorage Home")
-        raise ConfigEntryNotReady("Failed to connect to device") from ex
+        _LOGGER.exception("Unexpected error during Eaton xStorage Home setup: %s", ex)
+        # Any remaining unexpected error during setup should be treated as not ready
+        # to let Home Assistant handle retries gracefully.
+        raise ConfigEntryNotReady(f"Integration not ready: {ex}") from ex
     else:
         return True
 
