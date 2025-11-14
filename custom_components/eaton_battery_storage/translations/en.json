@@ -12,7 +12,7 @@
           "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
         },
         "data_description": {
-          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials (default: admin/jlwgK41G).",
+          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials. Defaults: Customer — user/user; Technician — admin/jlwgK41G.",
           "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels."
         }
       }
