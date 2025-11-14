@@ -10,8 +10,6 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
-
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
@@ -63,7 +61,6 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
         self._options = [label for (label, _) in DEFAULT_MODE_OPTIONS]
         self._option_to_cmd = {label: cmd for (label, cmd) in DEFAULT_MODE_OPTIONS}
         self._cmd_to_label = {cmd: label for (label, cmd) in DEFAULT_MODE_OPTIONS}
-        self._optimistic_option: str | None = None
 
     @property
     def device_info(self):
@@ -78,8 +75,6 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         """Return the current selected option."""
-        if self._optimistic_option is not None:
-            return self._optimistic_option
         try:
             settings = (
                 self.coordinator.data.get("settings", {})
@@ -108,9 +103,6 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
         if option not in self._option_to_cmd:
             _LOGGER.error("Invalid operation mode option: %s", option)
             return
-        # Optimistic update for responsive UI
-        self._optimistic_option = option
-        self.async_write_ha_state()
 
         try:
             # Always fetch the latest settings
@@ -119,7 +111,6 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
                 "result"
             ):
                 _LOGGER.error("Failed to get current settings from API")
-                self._optimistic_option = None
                 return
             current_settings = current_settings_response.get("result", {})
 
@@ -193,28 +184,24 @@ class EatonXStorageDefaultOperationModeSelect(CoordinatorEntity, SelectEntity):
             result = await self.coordinator.api.update_settings(payload)
             if result.get("successful", result.get("result") is not None):
                 _LOGGER.info("Default operation mode set to %s", option)
-                await asyncio.sleep(1)
+                # Give device time to apply the change
+                await asyncio.sleep(2)
             else:
                 _LOGGER.warning(
                     "Default mode API call may not have succeeded: %s", result
                 )
                 await asyncio.sleep(1)
+            
+            # Refresh to get the latest state from device
             await self.coordinator.async_request_refresh()
-            self._optimistic_option = None
+            
         except Exception as e:
             _LOGGER.error("Error setting default operation mode: %s", e)
-            self._optimistic_option = None
             await self.coordinator.async_request_refresh()
 
     def select_option(self, option: str) -> None:
         """Change the selected option."""
         asyncio.create_task(self.async_select_option(option))
-
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        if self._optimistic_option is not None:
-            self._optimistic_option = None
-        super()._handle_coordinator_update()
 
 
 class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
@@ -246,7 +233,6 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
         self._cmd_to_label.update(
             {"SET_CHARGE": "Manual Charge", "SET_DISCHARGE": "Manual Discharge"}
         )
-        self._optimistic_option: str | None = None
 
     @property
     def device_info(self):
@@ -261,8 +247,6 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         """Return the current selected option."""
-        if self._optimistic_option is not None:
-            return self._optimistic_option
         try:
             status = (
                 self.coordinator.data.get("status", {}) if self.coordinator.data else {}
@@ -290,23 +274,11 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
             _LOGGER.error("Invalid current operation mode option: %s", option)
             return
 
-        # Optimistic update for responsive UI
-        self._optimistic_option = option
-        self.async_write_ha_state()
-
         try:
             command = self._option_to_cmd[option]
 
-            # Get helper values from hass.data storage, handle missing DOMAIN gracefully
-            if DOMAIN not in self.hass.data:
-                _LOGGER.error(
-                    "Missing integration data in hass.data for domain '%s'. Cannot set current operation mode.",
-                    DOMAIN,
-                )
-                self._optimistic_option = None
-                await self.coordinator.async_request_refresh()
-                return
-            helper_values = self.hass.data[DOMAIN].get("number_values", {})
+            # Get helper values from coordinator storage
+            helper_values = getattr(self.coordinator, "number_values", {})
 
             # Determine duration based on command type
             duration = 1  # default fallback
@@ -387,23 +359,17 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
                 _LOGGER.info(
                     "Current operation mode set to %s for %d hours", option, duration
                 )
-                await asyncio.sleep(1)
+                # Give device time to apply the change
+                await asyncio.sleep(2)
             else:
                 _LOGGER.warning(
                     "Current mode API call may not have succeeded: %s", result
                 )
                 await asyncio.sleep(1)
 
+            # Refresh to get the latest state from device
             await self.coordinator.async_request_refresh()
-            self._optimistic_option = None
 
         except Exception as e:
             _LOGGER.error("Error setting current operation mode: %s", e)
-            self._optimistic_option = None
             await self.coordinator.async_request_refresh()
-
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        if self._optimistic_option is not None:
-            self._optimistic_option = None
-        super()._handle_coordinator_update()
