@@ -54,6 +54,25 @@ async def async_setup_entry(
     # Store data directly on the coordinator for access by entities
     if not hasattr(coordinator, "number_values"):
         coordinator.number_values = stored
+        # Set defaults for missing values
+        for desc in NUMBER_ENTITIES:
+            key = desc["key"]
+            if key not in coordinator.number_values:
+                default = desc.get("default")
+                if default is not None:
+                    coordinator.number_values[key] = default
+        # Set linked watt values if percent defaults are set
+        if "charge_power" in coordinator.number_values:
+            coordinator.number_values["charge_power_watt"] = int(
+                round((coordinator.number_values["charge_power"] / 100) * 3600)
+            )
+        if "discharge_power" in coordinator.number_values:
+            coordinator.number_values["discharge_power_watt"] = int(
+                round((coordinator.number_values["discharge_power"] / 100) * 3600)
+            )
+        # Save defaults if storage was empty
+        if not stored:
+            await store.async_save(coordinator.number_values)
     if not hasattr(coordinator, "number_store"):
         coordinator.number_store = store
 

@@ -37,6 +37,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "h",
         "device_class": "duration",
+        "default": 1,
     },
     {
         "key": CHARGE_END_SOC,
@@ -46,6 +47,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "%",
         "device_class": "battery",
+        "default": 80,
     },
     {
         "key": CHARGE_POWER,
@@ -55,6 +57,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "%",
         "device_class": "power",
+        "default": 20,
     },
     {
         "key": CHARGE_POWER_WATT,
@@ -64,6 +67,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "W",
         "device_class": "power",
+        # No default for watt, will be set by percent
     },
     {
         "key": DISCHARGE_DURATION,
@@ -73,6 +77,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "h",
         "device_class": "duration",
+        "default": 1,
     },
     {
         "key": DISCHARGE_END_SOC,
@@ -82,6 +87,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "%",
         "device_class": "battery",
+        "default": 20,
     },
     {
         "key": DISCHARGE_POWER,
@@ -91,6 +97,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "%",
         "device_class": "power",
+        "default": 20,
     },
     {
         "key": DISCHARGE_POWER_WATT,
@@ -100,6 +107,7 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "W",
         "device_class": "power",
+        # No default for watt, will be set by percent
     },
     {
         "key": RUN_DURATION,
@@ -109,5 +117,6 @@ NUMBER_ENTITIES: list[NumberEntityDefinition] = [
         "step": 1,
         "unit": "h",
         "device_class": "duration",
+        "default": 1,
     },
 ]
