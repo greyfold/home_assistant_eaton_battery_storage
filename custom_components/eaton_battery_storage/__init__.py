@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import SERVICE_RELOAD, Platform
+from homeassistant.const import Platform, SERVICE_RELOAD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
@@ -78,7 +79,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await api.connect()
 
         coordinator = EatonXstorageHomeCoordinator(hass, api, entry)
-        await coordinator.async_config_entry_first_refresh()
+        try:
+            await coordinator.async_config_entry_first_refresh()
+        except asyncio.CancelledError:
+            # Let HA handle cancellations (shutdown/reload)
+            raise
+        except Exception as err:
+            # If first refresh fails due to connectivity, mark entry not ready
+            raise ConfigEntryNotReady(f"Initial data refresh failed: {err}") from err
 
         # Store coordinator in entry.runtime_data following HA best practices
         entry.runtime_data = coordinator
@@ -98,11 +106,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DOMAIN, SERVICE_RELOAD, reload_service_handler, schema=vol.Schema({})
         )
 
-        return True
-
     except Exception as ex:
-        _LOGGER.exception("Failed to set up Eaton xStorage Home: %s", ex)
-        raise ConfigEntryNotReady(f"Failed to connect to device: {ex}") from ex
+        _LOGGER.exception("Failed to set up Eaton xStorage Home")
+        raise ConfigEntryNotReady("Failed to connect to device") from ex
+    else:
+        return True
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):

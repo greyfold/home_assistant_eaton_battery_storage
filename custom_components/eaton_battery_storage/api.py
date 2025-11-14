@@ -16,9 +16,11 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta
+import asyncio
 from typing import Any
 
 import aiohttp
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
@@ -72,48 +74,55 @@ class EatonBatteryAPI:
             payload["inverterSn"] = self.inverter_sn
             payload["email"] = self.email
 
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(url, json=payload, ssl=False) as response:
-                    if response.content_type == "application/json":
-                        result = await response.json()
-                    else:
-                        text = await response.text()
-                        _LOGGER.error(
-                            "Non-JSON auth response (%s): %s", response.status, text
-                        )
-                        raise ValueError("Authentication failed: non-JSON response")
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.post(
+                url,
+                json=payload,
+                ssl=False,
+                timeout=aiohttp.ClientTimeout(total=15, connect=5),
+            ) as response:
+                if response.content_type == "application/json":
+                    result = await response.json()
+                else:
+                    text = await response.text()
+                    _LOGGER.error(
+                        "Non-JSON auth response (%s): %s", response.status, text
+                    )
+                    raise ValueError("Authentication failed: non-JSON response")
 
-                    if (
-                        response.status == 200
-                        and result.get("successful")
-                        and "token" in result.get("result", {})
-                    ):
-                        self.access_token = result["result"]["token"]
-                        self.token_expiration = datetime.utcnow() + timedelta(
-                            minutes=55
-                        )
-                        await self.store_token()
-                        _LOGGER.info("Connected successfully. Bearer token acquired.")
-                    elif "error" in result:
-                        err = result["error"]
-                        err_msg = (
-                            err.get("description")
-                            or err.get("errCode")
-                            or "Authentication failed"
-                        )
-                        raise ValueError(err_msg)
-                    else:
-                        _LOGGER.warning("Authentication failed: %s", result)
-                        raise ValueError(
-                            "Authentication failed with unexpected response."
-                        )
-            except aiohttp.ClientError as e:
-                _LOGGER.error("Network error during authentication: %s", e)
-                raise ConnectionError(f"Cannot connect to device: {e}") from e
-            except Exception as e:
-                _LOGGER.error("Error during authentication: %s", e)
-                raise
+                if (
+                    response.status == 200
+                    and result.get("successful")
+                    and "token" in result.get("result", {})
+                ):
+                    self.access_token = result["result"]["token"]
+                    self.token_expiration = datetime.utcnow() + timedelta(minutes=55)
+                    await self.store_token()
+                    _LOGGER.info("Connected successfully. Bearer token acquired.")
+                elif "error" in result:
+                    err = result["error"]
+                    err_msg = (
+                        err.get("description")
+                        or err.get("errCode")
+                        or "Authentication failed"
+                    )
+                    raise ValueError(err_msg)
+                else:
+                    _LOGGER.warning("Authentication failed: %s", result)
+                    raise ValueError("Authentication failed with unexpected response.")
+        except asyncio.CancelledError:
+            # Propagate cancellation (reload/shutdown), do not log as error
+            raise
+        except asyncio.TimeoutError as e:
+            _LOGGER.error("Authentication timed out: %s", e)
+            raise ConnectionError("Authentication timed out") from e
+        except aiohttp.ClientError as e:
+            _LOGGER.error("Network error during authentication: %s", e)
+            raise ConnectionError(f"Cannot connect to device: {e}") from e
+        except Exception as e:
+            _LOGGER.error("Error during authentication: %s", e)
+            raise
 
     async def store_token(self) -> None:
         """Store the access token to persistent storage."""
@@ -165,55 +174,61 @@ class EatonBatteryAPI:
         headers["Authorization"] = f"Bearer {self.access_token}"
         kwargs["headers"] = headers
         kwargs["ssl"] = False
+        # Enforce a reasonable timeout to avoid long-hanging requests during reloads
+        if "timeout" not in kwargs:
+            kwargs["timeout"] = aiohttp.ClientTimeout(total=15, connect=5)
 
         # Add query parameters if provided
         if params:
             kwargs["params"] = params
 
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.request(method, url, **kwargs) as response:
-                    if response.status == 401:
-                        _LOGGER.warning("Access token expired. Refreshing token...")
-                        await self.refresh_token()
-                        headers["Authorization"] = f"Bearer {self.access_token}"
-                        kwargs["headers"] = headers
-                        async with session.request(
-                            method, url, **kwargs
-                        ) as retry_response:
-                            if retry_response.content_type == "application/json":
-                                return await retry_response.json()
-                            text_response = await retry_response.text()
-                            _LOGGER.error(
-                                "Non-JSON response from %s: Status %s, Content: %s",
-                                endpoint,
-                                retry_response.status,
-                                text_response,
-                            )
-                            return {"successful": False, "error": text_response}
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.request(method, url, **kwargs) as response:
+                if response.status == 401:
+                    _LOGGER.warning("Access token expired. Refreshing token...")
+                    await self.refresh_token()
+                    headers["Authorization"] = f"Bearer {self.access_token}"
+                    kwargs["headers"] = headers
+                    async with session.request(method, url, **kwargs) as retry_response:
+                        if retry_response.content_type == "application/json":
+                            return await retry_response.json()
+                        text_response = await retry_response.text()
+                        _LOGGER.error(
+                            "Non-JSON response from %s: Status %s, Content: %s",
+                            endpoint,
+                            retry_response.status,
+                            text_response,
+                        )
+                        return {"successful": False, "error": text_response}
 
-                    # Handle different response types
-                    if response.content_type == "application/json":
-                        return await response.json()
-                    text_response = await response.text()
-                    _LOGGER.error(
-                        "Non-JSON response from %s: Status %s, Content: %s",
-                        endpoint,
-                        response.status,
-                        text_response,
-                    )
-                    return {
-                        "successful": False,
-                        "error": text_response,
-                        "status": response.status,
-                    }
-
-            except aiohttp.ClientError as e:
-                _LOGGER.error("Network error during API request to %s: %s", endpoint, e)
-                return {"successful": False, "error": str(e)}
-            except Exception as e:
-                _LOGGER.error("Error during API request to %s: %s", endpoint, e)
-                return {"successful": False, "error": str(e)}
+                # Handle different response types
+                if response.content_type == "application/json":
+                    return await response.json()
+                text_response = await response.text()
+                _LOGGER.error(
+                    "Non-JSON response from %s: Status %s, Content: %s",
+                    endpoint,
+                    response.status,
+                    text_response,
+                )
+                return {
+                    "successful": False,
+                    "error": text_response,
+                    "status": response.status,
+                }
+        except asyncio.CancelledError:
+            # Propagate cancellation so HA can handle reload/shutdown gracefully
+            raise
+        except asyncio.TimeoutError as e:
+            _LOGGER.error("API request to %s timed out: %s", endpoint, e)
+            return {"successful": False, "error": "timeout"}
+        except aiohttp.ClientError as e:
+            _LOGGER.error("Network error during API request to %s: %s", endpoint, e)
+            return {"successful": False, "error": str(e)}
+        except Exception as e:
+            _LOGGER.error("Error during API request to %s: %s", endpoint, e)
+            return {"successful": False, "error": str(e)}
 
     async def get_status(self) -> dict[str, Any]:
         """Get device status."""
