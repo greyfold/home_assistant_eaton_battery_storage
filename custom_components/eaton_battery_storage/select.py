@@ -297,7 +297,15 @@ class EatonXStorageCurrentOperationModeSelect(CoordinatorEntity, SelectEntity):
         try:
             command = self._option_to_cmd[option]
 
-            # Get helper values from hass.data storage
+            # Get helper values from hass.data storage, handle missing DOMAIN gracefully
+            if DOMAIN not in self.hass.data:
+                _LOGGER.error(
+                    "Missing integration data in hass.data for domain '%s'. Cannot set current operation mode.",
+                    DOMAIN,
+                )
+                self._optimistic_option = None
+                await self.coordinator.async_request_refresh()
+                return
             helper_values = self.hass.data[DOMAIN].get("number_values", {})
 
             # Determine duration based on command type
