@@ -61,7 +61,7 @@ class EatonXstorageHomeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name="Eaton xStorage Home",
             manufacturer="Eaton",
             model="xStorage Home",
-            entry_type="device",
+            entry_type="none",
             configuration_url=f"https://{self.api.host}",
         )
 
