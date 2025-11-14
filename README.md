@@ -30,9 +30,9 @@ This integration is based on the reverse-engineered REST API of the Eaton xStora
 
 ### HACS (Recommended)
 
-1. Open HACS in Home Assistant
-2. Click on "Integrations"
-3. Click the three dots in the top right corner
+1. Install HACS following the [installation guide](https://hacs.xyz/docs/use/download/download/).
+2. Open Home Assistant and click "HACS" in the sidebar.
+3. In HACS, click "Integrations", then click the three dots (⋯) in the top-right corner.
 4. Select "Custom repositories"
 5. Add this repository URL.
 6. Select "Integration" as the category
@@ -45,7 +45,7 @@ This integration is based on the reverse-engineered REST API of the Eaton xStora
 ## Pre-requisite
 
 - A Home Assistant Gateway
-- An Eaton xStorage Home (Tiida)
+- An Eaton xStorage Battery Storage System
 - A local network
 - A GitHub account
 
