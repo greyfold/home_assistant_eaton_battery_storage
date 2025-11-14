@@ -28,7 +28,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfPower
 from homeassistant.core import HomeAssistant
@@ -56,48 +56,56 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:gesture-tap-button",
     },
     "status.currentMode.duration": {
         "name": "Current Mode Duration",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:timer-outline",
     },
     "status.currentMode.startTime": {
         "name": "Current Mode Start Time",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:clock-start",
     },
     "status.currentMode.endTime": {
         "name": "Current Mode End Time",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:clock-end",
     },
     "status.currentMode.recurrence": {
         "name": "Current Mode Recurrence",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:calendar-repeat",
     },
     "status.currentMode.type": {
         "name": "Current Mode Type",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:format-list-bulleted-type",
     },
     "status.currentMode.parameters.action": {
         "name": "Current Mode Action",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:play-outline",
     },
     "status.currentMode.parameters.power": {
         "name": "Current Mode Power",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:flash",
     },
     "status.currentMode.parameters.soc": {
         "name": "Current Mode SOC",
@@ -109,8 +117,9 @@ SENSOR_TYPES = {
         "name": "AC PV Role",
         "unit": None,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "pv_related": True,
+        "icon": "mdi:solar-power",
     },
     # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.acPvValue": {
@@ -127,12 +136,14 @@ SENSOR_TYPES = {
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
         "disabled_by_default": True,
+        "icon": "mdi:battery-heart-outline",
     },
     "status.energyFlow.batteryStatus": {
         "name": "Battery Status",
         "unit": None,
         "device_class": None,
-        "entity_category": EntityCategory.DIAGNOSTIC,
+        "entity_category": None,
+        "icon": "mdi:battery",
     },
     "status.energyFlow.batteryEnergyFlow": {
         "name": "Battery Power",
@@ -144,7 +155,8 @@ SENSOR_TYPES = {
         "name": "Critical Load Role",
         "unit": None,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:alert-octagon-outline",
     },
     # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.criticalLoadValue": {
@@ -158,8 +170,9 @@ SENSOR_TYPES = {
         "name": "DC PV Role",
         "unit": None,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "pv_related": True,
+        "icon": "mdi:solar-power",
     },
     # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.dcPvValue": {
@@ -174,7 +187,8 @@ SENSOR_TYPES = {
         "name": "Grid Role",
         "unit": None,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:transmission-tower",
     },
     # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.gridValue": {
@@ -188,7 +202,8 @@ SENSOR_TYPES = {
         "name": "Non-Critical Load Role",
         "unit": None,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:power-socket",
     },
     # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.nonCriticalLoadValue": {
@@ -203,6 +218,7 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:cog-outline",
     },
     # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.selfConsumption": {
@@ -217,6 +233,7 @@ SENSOR_TYPES = {
         "unit": PERCENTAGE,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:gauge",
     },
     "status.energyFlow.stateOfCharge": {
         "name": "Battery State of Charge",
@@ -229,19 +246,21 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:leaf",
     },
     "status.energyFlow.energySavingModeActivated": {
         "name": "Energy Saving Mode Activated",
         "unit": None,
         "device_class": None,
         "entity_category": None,
+        "icon": "mdi:leaf-circle",
     },
     # WARNING: 30-day metrics disabled by default - inverter measurements are typically 10%-30% higher than actual values
     "status.last30daysEnergyFlow.gridConsumption": {
         "name": "30 Days Grid Consumption",
         "unit": UnitOfPower.WATT,
         "device_class": "power",
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "disabled_by_default": True,
         "accuracy_warning": True,
     },
@@ -249,7 +268,7 @@ SENSOR_TYPES = {
         "name": "30 Days PV Production",
         "unit": UnitOfPower.WATT,
         "device_class": "power",
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "pv_related": True,
         "disabled_by_default": True,
         "accuracy_warning": True,
@@ -258,24 +277,26 @@ SENSOR_TYPES = {
         "name": "30 Days Self Consumption",
         "unit": PERCENTAGE,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "disabled_by_default": True,
         "accuracy_warning": True,
+        "icon": "mdi:calendar-clock",
     },
     "status.last30daysEnergyFlow.selfSufficiency": {
         "name": "30 Days Self Sufficiency",
         "unit": PERCENTAGE,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "disabled_by_default": True,
         "accuracy_warning": True,
+        "icon": "mdi:calendar-gauge",
     },
     # WARNING: Today's metrics also affected by inverter accuracy issues
     "status.today.gridConsumption": {
         "name": "Today's Grid Consumption",
         "unit": UnitOfPower.WATT,
         "device_class": "power",
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "disabled_by_default": True,
         "accuracy_warning": True,
     },
@@ -291,17 +312,19 @@ SENSOR_TYPES = {
         "name": "Today's Self Consumption",
         "unit": PERCENTAGE,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "disabled_by_default": True,
         "accuracy_warning": True,
+        "icon": "mdi:clock-outline",
     },
     "status.today.selfSufficiency": {
         "name": "Today's Self Sufficiency",
         "unit": PERCENTAGE,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "disabled_by_default": True,
         "accuracy_warning": True,
+        "icon": "mdi:clock-check-outline",
     },
     # device endpoint
     "device.firmwareVersion": {
@@ -309,18 +332,21 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:chip",
     },
     "device.inverterFirmwareVersion": {
         "name": "Inverter Firmware Version",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:chip",
     },
     "device.bmsFirmwareVersion": {
         "name": "BMS Firmware Version",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:chip",
     },
     "device.energySavingMode.houseConsumptionThreshold": {
         "name": "House Consumption Threshold",
@@ -333,12 +359,14 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:factory",
     },
     "device.inverterModelName": {
         "name": "Inverter Model Name",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:identifier",
     },
     "device.inverterVaRating": {
         "name": "Inverter VA Rating",
@@ -351,6 +379,7 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:barcode",
     },
     "device.inverterNominalVpv": {
         "name": "Inverter Nominal VPV",
@@ -370,24 +399,28 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:barcode",
     },
     "device.bmsModel": {
         "name": "BMS Model",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:identifier",
     },
     "device.bundleVersion": {
         "name": "Bundle Version",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:package-variant",
     },
     "device.localPortalRemoteId": {
         "name": "Local Portal Remote ID",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:remote-desktop",
     },
     "device.dns": {
         "name": "DNS Server",
@@ -395,12 +428,14 @@ SENSOR_TYPES = {
         "device_class": None,
         "disabled_by_default": True,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:dns",
     },
     "device.timezone.name": {
         "name": "Device Timezone",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:earth",
     },
     # technical status endpoint - requires technician account
     "technical_status.operationMode": {
@@ -408,6 +443,7 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:cog-outline",
     },
     "technical_status.gridVoltage": {
         "name": "Grid Voltage",
@@ -450,6 +486,7 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:code-tags",
     },
     "technical_status.dcCurrentInjectionR": {
         "name": "DC Current Injection R",
@@ -477,6 +514,7 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:identifier",
     },
     "technical_status.inverterPowerRating": {
         "name": "Technical Inverter Power Rating",
@@ -571,12 +609,14 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:battery",
     },
     "technical_status.bmsFaultCode": {
         "name": "BMS Fault Code",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:alert-circle-outline",
     },
     "technical_status.bmsHighestCellVoltage": {
         "name": "BMS Highest Cell Voltage",
@@ -601,12 +641,14 @@ SENSOR_TYPES = {
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:protocol",
     },
     "technical_status.invBootloaderVersion": {
         "name": "Inverter Bootloader Version",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:chip",
     },
     # maintenance diagnostics endpoint - requires technician account
     "maintenance_diagnostics.ramUsage.total": {
@@ -614,31 +656,36 @@ SENSOR_TYPES = {
         "unit": "MB",
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:memory",
     },
     "maintenance_diagnostics.ramUsage.used": {
         "name": "System RAM Used",
         "unit": "MB",
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:memory",
     },
     "maintenance_diagnostics.cpuUsage.used": {
         "name": "System CPU Usage",
         "unit": PERCENTAGE,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:cpu-64-bit",
     },
     # notification endpoints
     "unread_notifications_count.total": {
         "name": "Unread Notifications Count",
         "unit": None,
         "device_class": None,
-        "entity_category": None,
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:bell-badge-outline",
     },
     "notifications.total": {
         "name": "Total Notifications Count",
         "unit": None,
         "device_class": None,
         "entity_category": EntityCategory.DIAGNOSTIC,
+        "icon": "mdi:bell-outline",
     },
 }
 
@@ -757,16 +804,30 @@ class EatonXStorageSensor(
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._key = key
-        self._attr_name = description["name"]
-        self._attr_native_unit_of_measurement = description["unit"]
-        self._attr_device_class = description["device_class"]
-        self._attr_entity_category = description["entity_category"]
+        # Be robust to missing fields in description
+        self._attr_name = description.get("name", key)
+        self._attr_native_unit_of_measurement = description.get("unit")
+        self._attr_device_class = description.get("device_class")
+        self._attr_entity_category = description.get("entity_category")
         self._attr_entity_registry_enabled_default = not description.get(
             "disabled_by_default", False
         )
         self._accuracy_warning = description.get("accuracy_warning", False)
         self._precision = description.get("precision")
         self._attr_unique_id = f"eaton_xstorage_{key.replace('.', '_')}"
+
+        # Apply static icon from description when provided (esp. when no device_class)
+        icon_from_description = description.get("icon")
+        if icon_from_description and self._attr_device_class in (None, "none", "None"):
+            self._attr_icon = icon_from_description
+
+        # Set state_class for power and energy sensors
+        if self._attr_device_class == "power":
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif self._attr_device_class == "energy":
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        elif self._attr_device_class == "energy_storage":
+            self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def entity_registry_enabled_default(self) -> bool:
