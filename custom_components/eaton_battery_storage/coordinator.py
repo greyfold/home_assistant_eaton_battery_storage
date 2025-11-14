@@ -3,7 +3,7 @@
 IMPORTANT ACCURACY WARNING:
 Power measurement data retrieved by this coordinator from the xStorage Home API
 has poor accuracy. Energy flow values (consumption, production, grid power,
-load values) are typically 30% higher than actual measurements. This affects
+load values) are typically 10%-30% higher than actual measurements. This affects
 all power-related data in the coordinator's data structure under energyFlow,
 today, and last30daysEnergyFlow sections.
 """

@@ -2,7 +2,7 @@
 
 IMPORTANT ACCURACY WARNING:
 The xStorage Home inverter has poor energy monitoring accuracy. Power measurements
-(consumption, production, grid values, load values) are typically 30% higher than
+(consumption, production, grid values, load values) are typically 10%-30% higher than
 actual values. This affects all energy flow data returned by the API endpoints:
 - /api/device/status (energyFlow section)
 - /api/metrics and /api/metrics/daily

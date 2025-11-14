@@ -56,6 +56,6 @@ OPERATION_MODE_MAP: dict[str, str] = {
 
 # Accuracy warning message for power measurements
 POWER_ACCURACY_WARNING = (
-    "WARNING: Inverter power measurements are typically 30% higher than actual values. "
+    "WARNING: Inverter power measurements are typically 10%-30% higher than actual values. "
     "Do not rely on this data for accurate energy calculations."
 )

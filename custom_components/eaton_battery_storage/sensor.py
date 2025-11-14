@@ -2,7 +2,7 @@
 
 IMPORTANT ACCURACY WARNING:
 The built-in inverter energy monitoring has poor accuracy and typically reports
-power output/consumption values approximately 30% higher than actual values.
+power output/consumption values approximately 10%-30% higher than actual values.
 This affects all power-related data in Home Assistant including:
 - Grid power values
 - Load consumption values
@@ -112,7 +112,7 @@ SENSOR_TYPES = {
         "entity_category": None,
         "pv_related": True,
     },
-    # WARNING: Inverter power measurements are typically 30% higher than actual values - accuracy is poor
+    # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.acPvValue": {
         "name": "AC PV Value",
         "unit": UnitOfPower.WATT,
@@ -146,7 +146,7 @@ SENSOR_TYPES = {
         "device_class": None,
         "entity_category": None,
     },
-    # WARNING: Inverter power measurements are typically 30% higher than actual values - accuracy is poor
+    # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.criticalLoadValue": {
         "name": "Critical Load Value",
         "unit": UnitOfPower.WATT,
@@ -161,7 +161,7 @@ SENSOR_TYPES = {
         "entity_category": None,
         "pv_related": True,
     },
-    # WARNING: Inverter power measurements are typically 30% higher than actual values - accuracy is poor
+    # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.dcPvValue": {
         "name": "DC PV Value",
         "unit": UnitOfPower.WATT,
@@ -176,7 +176,7 @@ SENSOR_TYPES = {
         "device_class": None,
         "entity_category": None,
     },
-    # WARNING: Inverter power measurements are typically 30% higher than actual values - accuracy is poor
+    # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.gridValue": {
         "name": "Grid Power",
         "unit": UnitOfPower.WATT,
@@ -190,7 +190,7 @@ SENSOR_TYPES = {
         "device_class": None,
         "entity_category": None,
     },
-    # WARNING: Inverter power measurements are typically 30% higher than actual values - accuracy is poor
+    # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.nonCriticalLoadValue": {
         "name": "Non-Critical Load Value",
         "unit": UnitOfPower.WATT,
@@ -204,7 +204,7 @@ SENSOR_TYPES = {
         "device_class": None,
         "entity_category": None,
     },
-    # WARNING: Inverter power measurements are typically 30% higher than actual values - accuracy is poor
+    # WARNING: Inverter power measurements are typically 10%-30% higher than actual values - accuracy is poor
     "status.energyFlow.selfConsumption": {
         "name": "Self Consumption",
         "unit": UnitOfPower.WATT,
@@ -236,7 +236,7 @@ SENSOR_TYPES = {
         "device_class": None,
         "entity_category": None,
     },
-    # WARNING: 30-day metrics disabled by default - inverter measurements are typically 30% higher than actual values
+    # WARNING: 30-day metrics disabled by default - inverter measurements are typically 10%-30% higher than actual values
     "status.last30daysEnergyFlow.gridConsumption": {
         "name": "30 Days Grid Consumption",
         "unit": UnitOfPower.WATT,
@@ -996,7 +996,7 @@ class EatonXStorageSensor(
         if self._accuracy_warning:
             return {
                 "accuracy_warning": POWER_ACCURACY_WARNING,
-                "measurement_note": "Values typically 30% higher than actual",
+                "measurement_note": "Values typically 10%-30% higher than actual",
             }
         return None
 
