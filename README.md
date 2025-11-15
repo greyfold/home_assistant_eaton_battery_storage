@@ -1,6 +1,6 @@
-# Home Assistant Eaton xStorage Home Battery Integration
+# Home Assistant Eaton Battery Storage Integration
 
-A Home Assistant custom component for integrating Eaton xStorage Home battery systems.
+A Home Assistant custom component for integrating Eaton's xStorage Home battery storage system.
 
 ## Credits
 
@@ -237,3 +237,43 @@ Example Home Assistant automations are provided in the `examples/` folder:
 - `examples/example_home_assistant_automation_notifications_event.yaml` — react to new inverter alerts via EventEntity and mark notifications read
 
 These examples use registry `device_id` and `entity_id` values for stability across renames; update them to match your setup and see inline comments for guidance.
+
+## Configuration
+
+### Account Types
+
+This integration supports two account types:
+
+- **Customer Account** (Default: user/user)
+  - Basic monitoring and control
+  - All core entities available
+  - PV sensors (if enabled)
+  
+- **Technician Account** (Default: admin/jlwgK41G) 
+  - All Customer features plus:
+  - Advanced technical diagnostics
+  - BMS voltage/current/temperature sensors
+  - System CPU/RAM monitoring
+  - Requires inverter serial number
+
+### Reconfiguration
+
+You can change settings after installation:
+1. Go to **Settings** → **Devices & Services**
+2. Find **Eaton xStorage Home Battery**
+3. Click **Configure**
+4. Update credentials, account type, or PV settings
+
+## Troubleshooting
+
+### Account Locked (Error 10)
+If you see "Error during authentication: 10", your account was locked due to failed login attempts. Wait 10 minutes before trying again.
+
+### Enable Debug Logging
+Add to `configuration.yaml`:
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.eaton_battery_storage: debug
+```
