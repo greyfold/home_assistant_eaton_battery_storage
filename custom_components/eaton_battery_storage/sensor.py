@@ -30,9 +30,8 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfPower
+from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfPower
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -924,21 +923,24 @@ class EatonXStorageSensor(
                 )
                 return None
 
-            # Filter out invalid 0 values for BMS temperature and charge/discharge sensors
-            # These sensors sometimes incorrectly return 0 and should be ignored
+            # Filter out invalid 0 values for certain technical sensors that sometimes incorrectly return 0
+            # Existing (BMS temps and charge/discharge) + additional: bmsAvgTemperature, bmsVoltage, gridFrequency
             if (
                 self._key
                 in [
                     "technical_status.bmsMaxTemperature",
                     "technical_status.bmsMinTemperature",
+                    "technical_status.bmsAvgTemperature",
                     "technical_status.bmsTotalCharge",
                     "technical_status.bmsTotalDischarge",
+                    "technical_status.bmsVoltage",
+                    "technical_status.gridFrequency",
                 ]
                 and isinstance(value, (int, float))
                 and value == 0
             ):
                 _LOGGER.debug(
-                    "BMS sensor %s returned invalid value 0 - ignoring",
+                    "Sensor %s returned invalid value 0 - ignoring",
                     self._key,
                 )
                 return None
