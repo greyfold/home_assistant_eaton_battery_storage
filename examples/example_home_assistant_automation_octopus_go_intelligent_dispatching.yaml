@@ -1,0 +1,124 @@
+alias: Eaton Battery Smart Charging via Octopus Intelligent Go
+description: >
+  Intelligently controls Eaton battery charging based on Octopus Energy's
+  Intelligent Go smart dispatching algorithm.
+
+  This works IN ADDITION to the standard night off-peak charging schedule
+  configured on the Eaton inverter.
+
+
+  Smart Logic:
+
+  - Only triggers during active SMART dispatch periods (verified by checking current time against planned dispatches)
+
+  - Switches battery to 'Manual Charge' mode when Octopus's intelligent algorithm determines optimal charging periods
+
+  - Returns battery to 'Maximize Auto Consumption' when the smart dispatch period ends
+
+  - Only operates during normal day hours (when off-peak sensor is off) to avoid conflicts with inverter's night charging
+
+  - Intelligently ignores BOOST/bump charges initiated by user to respect manual overrides
+
+
+  Technical Implementation:
+
+  - Uses device_entities() to dynamically find the Octopus Intelligent dispatching binary sensor
+
+  - Checks 'planned_dispatches' attribute to verify dispatch source is 'SMART' or 'smart-charge'
+
+  - Validates current time falls within active dispatch window before triggering
+
+  - Ignores BOOST dispatches (user bump charges) and TEST dispatches (system tests)
+
+
+  This provides additional charging opportunities during unexpected cheap daytime periods
+  identified by Octopus's machine learning algorithm, while your inverter continues to
+  handle regular overnight charging and you retain full manual control when needed.
+
+
+  Reference:
+  https://bottlecapdave.github.io/HomeAssistant-OctopusEnergy/entities/intelligent/
+
+# NOTE ABOUT IDs
+# This example uses fixed device_id and entity_id values from the Home Assistant registry
+# instead of friendly entity names. This makes the automation resilient to renaming devices
+# and entities in the UI. You must replace the IDs below with the ones from your system:
+#
+# - Octopus Intelligent dispatching binary sensor (triggers):
+#     device_id: <your Octopus device_id>
+#     entity_id: <your Octopus intelligent dispatching entity registry ID>
+# - Your tariff off-peak binary sensor (condition):
+#     device_id: <your tariff device_id>
+#     entity_id: <your off-peak binary sensor entity registry ID>
+# - Eaton battery select entity for operation mode (actions):
+#     device_id: <your Eaton device_id>
+#     entity_id: <your 'Current Operation Mode' select entity registry ID>
+#
+# How to find these:
+# - In Settings → Devices & services, open a device; the URL ends with /device/<device_id> (copy this).
+# - For an entity, open it and click the device; in the Automations & Scenes editor, add a device trigger/condition,
+#   pick the entity, then switch to YAML view to see the registry entity_id value used by device triggers.
+# - Alternatively, build this automation via the UI (select the devices), then use the three-dots menu → Edit in YAML
+#   and copy the generated IDs.
+triggers:
+  - trigger: device
+    domain: binary_sensor
+    device_id: 5b8845a213c9389b39556eaf7abd5b51  # TODO: replace with your Octopus device_id
+    entity_id: 61d052b89fc85bb3d35d98a2d4e89e8f  # TODO: replace with your Octopus intelligent dispatch entity registry ID
+    type: turned_on
+    id: Cheap Energy
+    alias: Intelligent Dispatching Active
+  - trigger: device
+    domain: binary_sensor
+    device_id: 5b8845a213c9389b39556eaf7abd5b51  # TODO: replace with your Octopus device_id
+    entity_id: 61d052b89fc85bb3d35d98a2d4e89e8f  # TODO: replace with your Octopus intelligent dispatch entity registry ID
+    type: turned_off
+    id: Expensive Energy
+    alias: Intelligent Dispatching Inactive
+conditions:
+  - alias: Only continue if we are NOT within our tariffs normal off peak period
+    condition: device
+    domain: binary_sensor
+    device_id: 3912e8bcd9d950c832ebfb154138ce98  # TODO: replace with your tariff sensor device_id
+    entity_id: 80aa09f400893520a7232726cae46102  # TODO: replace with your off-peak binary sensor entity registry ID
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - Cheap Energy
+          - alias: Only trigger for SMART dispatches (not BOOST/bump charges)
+            condition: template
+            value_template: >-
+              {% set entity_id = device_entities('5b8845a213c9389b39556eaf7abd5b51') | select('match', 'binary_sensor.*intelligent_dispatching') | first %}
+              {% set dispatches = state_attr(entity_id, 'planned_dispatches') | default([]) %}
+              {% set now_time = now() %}
+              {% set found = namespace(value=false) %}
+              {% for dispatch in dispatches %}
+                {% set start_time = dispatch.start | as_datetime %}
+                {% set end_time = dispatch.end | as_datetime %}
+                {% if start_time <= now_time < end_time and dispatch.source in ['SMART', 'smart-charge'] %}
+                  {% set found.value = true %}
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+              {{ found.value }}
+        sequence:
+          - alias: Switch Eaton battery to Manual Charge mode
+            device_id: 7243064af443eaae599e1a98ef6c25f7  # TODO: replace with your Eaton device_id
+            domain: select
+            entity_id: 13cf6621ba88287ffad6027db25b02ab  # TODO: replace with your 'Current Operation Mode' select entity registry ID
+            type: select_option
+            option: Manual Charge
+      - conditions:
+          - condition: trigger
+            id:
+              - Expensive Energy
+        sequence:
+          - alias: Return Eaton battery to Auto Consumption mode
+            device_id: 7243064af443eaae599e1a98ef6c25f7  # TODO: replace with your Eaton device_id
+            domain: select
+            entity_id: 13cf6621ba88287ffad6027db25b02ab  # TODO: replace with your 'Current Operation Mode' select entity registry ID
+            type: select_option
+            option: Maximize Auto Consumption
+mode: single

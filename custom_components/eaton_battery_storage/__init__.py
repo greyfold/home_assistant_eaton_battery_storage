@@ -1,41 +1,161 @@
+"""Integration for Eaton xStorage Home battery storage."""
+
+from __future__ import annotations
+
+import asyncio
 import logging
+
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform, SERVICE_RELOAD
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.reload import async_reload_integration_platforms
 
 from .api import EatonBatteryAPI
-from .coordinator import EatonXstorageHomeCoordinator
 from .const import DOMAIN
+from .coordinator import EatonXstorageHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup(hass: HomeAssistant, config: dict):
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.EVENT,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
+
+# List of PV-related sensor keys that should be disabled when has_pv=False
+PV_SENSOR_KEYS = [
+    "device.inverterNominalVpv",
+    "status.energyFlow.acPvRole",
+    "status.energyFlow.acPvValue",
+    "status.energyFlow.dcPvRole",
+    "status.energyFlow.dcPvValue",
+    "status.last30daysEnergyFlow.photovoltaicProduction",
+    "status.today.photovoltaicProduction",
+    "technical_status.dcCurrentInjectionR",
+    "technical_status.dcCurrentInjectionS",
+    "technical_status.dcCurrentInjectionT",
+    "technical_status.pv1Current",
+    "technical_status.pv1Voltage",
+    "technical_status.pv2Current",
+    "technical_status.pv2Voltage",
+]
+
+
+async def async_setup(_hass: HomeAssistant, _config: dict) -> bool:
+    """Set up Eaton Battery Storage integration."""
     return True  # Not used for config flow-based setup
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    _LOGGER.debug("Setting up Eaton xStorage Home from config entry.")
-    api = EatonBatteryAPI(
-        username=entry.data["username"],
-        password=entry.data["password"],
-        hass=hass,
-        host=entry.data["host"],
-        app_id="com.eaton.xstoragehome",
-        name="Eaton xStorage Home",
-        manufacturer="Eaton"
-    )
-    await api.connect()
-    coordinator = EatonXstorageHomeCoordinator(hass, api)
-    await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["api"] = api
-    hass.data[DOMAIN]["coordinator"] = coordinator
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Eaton xStorage Home from a config entry."""
+    _LOGGER.debug("Setting up Eaton xStorage Home from config entry")
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
-    )
+    try:
+        # Get user type, defaulting to tech for backward compatibility
+        user_type = entry.data.get("user_type", "tech")
 
-    return True
+        api = EatonBatteryAPI(
+            username=entry.data["username"],
+            password=entry.data["password"],
+            inverter_sn=entry.data.get("inverter_sn", ""),
+            email=entry.data.get("email", ""),
+            hass=hass,
+            host=entry.data["host"],
+            app_id="com.eaton.xstoragehome",
+            name="Eaton xStorage Home",
+            manufacturer="Eaton",
+            user_type=user_type,
+        )
+        # Attempt initial connection; if device is unreachable or auth fails,
+        # signal Home Assistant to retry setup later instead of crashing setup
+        try:
+            await api.connect()
+        except Exception as err:
+            raise ConfigEntryNotReady(f"Device not reachable: {err}") from err
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    await hass.config_entries.async_forward_entry_unload(entry, "sensor")
-    return True
+        coordinator = EatonXstorageHomeCoordinator(hass, api, entry)
+        try:
+            await coordinator.async_config_entry_first_refresh()
+        except asyncio.CancelledError:
+            # Let HA handle cancellations (shutdown/reload)
+            raise
+        except Exception as err:
+            # If first refresh fails due to connectivity, mark entry not ready
+            raise ConfigEntryNotReady(f"Initial data refresh failed: {err}") from err
+
+        # Store coordinator in entry.runtime_data following HA best practices
+        entry.runtime_data = coordinator
+
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+        # Run initial PV sensor migration for existing installations
+        await async_migrate_pv_sensors(hass, entry)
+
+        # Add update listener for options changes
+        entry.async_on_unload(entry.add_update_listener(async_update_options))
+
+        async def reload_service_handler(_call):
+            await async_reload_integration_platforms(hass, DOMAIN, PLATFORMS)
+
+        hass.services.async_register(
+            DOMAIN, SERVICE_RELOAD, reload_service_handler, schema=vol.Schema({})
+        )
+
+    except ConfigEntryNotReady:
+        # Propagate without extra stack trace to avoid noisy duplicate logs
+        raise
+    except Exception as ex:
+        _LOGGER.exception("Unexpected error during Eaton xStorage Home setup: %s", ex)
+        # Any remaining unexpected error during setup should be treated as not ready
+        # to let Home Assistant handle retries gracefully.
+        raise ConfigEntryNotReady(f"Integration not ready: {ex}") from ex
+    else:
+        return True
+
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
+    """Update options and handle PV sensor migration."""
+    # Handle PV sensor enabling/disabling based on has_pv setting
+    await async_migrate_pv_sensors(hass, entry)
+
+    # Reload the integration to apply new settings
+    # This will recreate sensors based on the new user_type
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_migrate_pv_sensors(hass: HomeAssistant, entry: ConfigEntry):
+    """Enable or disable PV sensors based on has_pv configuration."""
+    entity_registry = er.async_get(hass)
+    has_pv = entry.data.get("has_pv", False)
+
+    _LOGGER.info("Migrating PV sensors: has_pv=%s", has_pv)
+
+    for sensor_key in PV_SENSOR_KEYS:
+        entity_id = f"sensor.eaton_xstorage_{sensor_key.replace('.', '_')}"
+
+        # Try to find the entity in the registry
+        registry_entry = entity_registry.async_get(entity_id)
+        if registry_entry:
+            # Update the entity's enabled state based on PV configuration
+            entity_registry.async_update_entity(
+                entity_id,
+                disabled_by=None if has_pv else er.RegistryEntryDisabler.INTEGRATION,
+            )
+            _LOGGER.debug(
+                "%s PV sensor: %s", "Enabled" if has_pv else "Disabled", entity_id
+            )
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
