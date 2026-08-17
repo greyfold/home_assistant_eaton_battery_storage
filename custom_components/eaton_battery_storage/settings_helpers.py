@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
-_LOGGER = logging.getLogger(__name__)
+from .api import EatonBatteryAPI, EatonResponseError
 
 
 def transform_settings_for_put(settings: dict[str, Any]) -> dict[str, Any]:
@@ -27,15 +26,11 @@ def transform_settings_for_put(settings: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
-async def async_get_and_transform_settings(api: Any) -> dict[str, Any] | None:
-    """Fetch current settings from API and transform for PUT.
+async def async_get_and_transform_settings(api: EatonBatteryAPI) -> dict[str, Any]:
+    """Fetch current settings from the API and transform them for PUT."""
+    response = await api.get_settings()
+    current_settings = response.get("result")
+    if not isinstance(current_settings, dict) or not current_settings:
+        raise EatonResponseError("Device returned no settings")
 
-    Returns the transformed settings dict, or None if fetch failed.
-    """
-    current_settings_response = await api.get_settings()
-    if not current_settings_response or not current_settings_response.get("result"):
-        _LOGGER.error("Failed to get current settings from API")
-        return None
-
-    current_settings = current_settings_response.get("result", {})
     return transform_settings_for_put(current_settings)

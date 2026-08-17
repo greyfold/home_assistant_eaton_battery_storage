@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
+
+from homeassistant.components.number import NumberDeviceClass
+from homeassistant.const import PERCENTAGE, UnitOfPower, UnitOfTime
 
 # Number entity keys
 CHARGE_DURATION = "charge_duration"
@@ -20,113 +23,109 @@ class NumberEntityDefinition(TypedDict):
     """Type definition for number entity configuration."""
 
     key: str
-    name: str
     translation_key: str
     min: int
     max: int
     step: int
     unit: str
-    device_class: str
+    device_class: NumberDeviceClass | None
+    default: NotRequired[int]
 
 
 NUMBER_ENTITIES: list[NumberEntityDefinition] = [
     {
         "key": CHARGE_DURATION,
-        "name": "Charge Duration",
         "translation_key": "charge_duration",
         "min": 1,
         "max": 12,
         "step": 1,
-        "unit": "h",
-        "device_class": "duration",
+        "unit": UnitOfTime.HOURS,
+        "device_class": NumberDeviceClass.DURATION,
         "default": 1,
     },
     {
         "key": CHARGE_END_SOC,
-        "name": "Charge Target SOC",
         "translation_key": "charge_end_soc",
         "min": 0,
         "max": 100,
         "step": 1,
-        "unit": "%",
-        "device_class": "battery",
+        "unit": PERCENTAGE,
+        "device_class": NumberDeviceClass.BATTERY,
         "default": 80,
     },
     {
         "key": CHARGE_POWER,
-        "name": "Charge Power (%)",
         "translation_key": "charge_power",
         "min": 5,
         "max": 100,
         "step": 1,
-        "unit": "%",
-        "device_class": "power",
+        "unit": PERCENTAGE,
+        # A share of the inverter rating, which no power device class accepts.
+        "device_class": None,
         "default": 20,
     },
     {
         "key": CHARGE_POWER_WATT,
-        "name": "Charge Power (Watt)",
         "translation_key": "charge_power_watt",
+        # Baseline for a 3.6 kW inverter; the platform replaces these bounds
+        # with the rating the device reports (the range spans 3.6 kW to 6 kW).
         "min": 180,
         "max": 3600,
         "step": 1,
-        "unit": "W",
-        "device_class": "power",
+        "unit": UnitOfPower.WATT,
+        "device_class": NumberDeviceClass.POWER,
         # No default for watt, will be set by percent
     },
     {
         "key": DISCHARGE_DURATION,
-        "name": "Discharge Duration",
         "translation_key": "discharge_duration",
         "min": 1,
         "max": 12,
         "step": 1,
-        "unit": "h",
-        "device_class": "duration",
+        "unit": UnitOfTime.HOURS,
+        "device_class": NumberDeviceClass.DURATION,
         "default": 1,
     },
     {
         "key": DISCHARGE_END_SOC,
-        "name": "Discharge Target SOC",
         "translation_key": "discharge_end_soc",
         "min": 0,
         "max": 100,
         "step": 1,
-        "unit": "%",
-        "device_class": "battery",
+        "unit": PERCENTAGE,
+        "device_class": NumberDeviceClass.BATTERY,
         "default": 20,
     },
     {
         "key": DISCHARGE_POWER,
-        "name": "Discharge Power (%)",
         "translation_key": "discharge_power",
         "min": 5,
         "max": 100,
         "step": 1,
-        "unit": "%",
-        "device_class": "power",
+        "unit": PERCENTAGE,
+        "device_class": None,
         "default": 20,
     },
     {
         "key": DISCHARGE_POWER_WATT,
-        "name": "Discharge Power (Watt)",
         "translation_key": "discharge_power_watt",
+        # Baseline for a 3.6 kW inverter; the platform replaces these bounds
+        # with the rating the device reports (the range spans 3.6 kW to 6 kW).
         "min": 180,
         "max": 3600,
         "step": 1,
-        "unit": "W",
-        "device_class": "power",
+        "unit": UnitOfPower.WATT,
+        "device_class": NumberDeviceClass.POWER,
         # No default for watt, will be set by percent
     },
     {
         "key": RUN_DURATION,
-        "name": "Run Duration",
         "translation_key": "run_duration",
         "min": 1,
         "max": 12,
         "step": 1,
-        "unit": "h",
-        "device_class": "duration",
+        "unit": UnitOfTime.HOURS,
+        "device_class": NumberDeviceClass.DURATION,
         "default": 1,
     },
 ]

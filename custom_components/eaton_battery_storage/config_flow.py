@@ -3,104 +3,106 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+)
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import selector as sel
 
-from .api import EatonBatteryAPI
-from .const import DOMAIN
+from .api import EatonAuthError, EatonBatteryAPI, EatonError
+from .const import (
+    ACCOUNT_TYPE_CUSTOMER,
+    ACCOUNT_TYPE_TECHNICIAN,
+    API_EMAIL,
+    APP_ID,
+    CONF_EMAIL,
+    CONF_HAS_PV,
+    CONF_INVERTER_SN,
+    CONF_USER_TYPE,
+    CONF_VERIFY_SSL,
+    DEFAULT_VERIFY_SSL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_INVERTER_SN = "inverter_sn"
-CONF_HAS_PV = "has_pv"
-CONF_USER_TYPE = "user_type"
+# Hostname, IPv4 address or bracketed IPv6 address, with an optional port.
+HOST_PATTERN = re.compile(
+    r"^(?:\[[0-9a-fA-F:]+\]|[A-Za-z0-9._-]+)(?::(?P<port>\d{1,5}))?$"
+)
+
+# Error codes reported by the device, mapped to translation keys.
+AUTH_ERROR_CODES = {
+    "10": "auth_error_locked",
+}
 
 
 async def _async_test_connection(
     hass: HomeAssistant,
-    host: str,
-    username: str,
-    password: str,
-    inverter_sn: str,
-    email: str,
-    user_type: str = "tech",
+    user_input: dict[str, Any],
 ) -> str | None:
-    """Test connection to the device and return inverter serial if available.
+    """Test the connection and return the inverter serial if the device reports it.
 
-    Shared helper used by ConfigFlow, OptionsFlow, and ReauthFlow.
+    Shared helper used by the user, reconfigure and reauth steps.
     """
     api = EatonBatteryAPI(
         hass=hass,
-        host=host,
-        username=username,
-        password=password,
-        inverter_sn=inverter_sn,
-        email=email,
-        app_id="com.eaton.xstoragehome",
+        host=user_input[CONF_HOST],
+        username=user_input[CONF_USERNAME],
+        password=user_input[CONF_PASSWORD],
+        inverter_sn=user_input[CONF_INVERTER_SN],
+        email=API_EMAIL,
+        app_id=APP_ID,
         name="Eaton xStorage Home",
         manufacturer="Eaton",
-        user_type=user_type,
+        user_type=user_input[CONF_USER_TYPE],
+        verify_ssl=user_input[CONF_VERIFY_SSL],
     )
 
+    await api.connect()
+
     try:
-        await api.connect()
-        # Try to fetch the device serial to allow per-device unique_id
-        serial = None
-        try:
-            device_resp = await api.get_device()
-            device_data = (
-                device_resp.get("result", {})
-                if isinstance(device_resp, dict)
-                else device_resp
-            )
-            serial = (
-                device_data.get("inverterSerialNumber")
-                if isinstance(device_data, dict)
-                else None
-            )
-        except Exception as exc:  # best-effort; serial not strictly required
-            _LOGGER.debug("Failed to retrieve device serial number: %s", exc)
-        return serial
-    except ValueError as err:
-        _LOGGER.warning("Authentication failed: %s", err)
-        # Re-raise original error so _classify_auth_error can inspect the message
-        raise
-    except (ConnectionError, OSError) as err:
-        _LOGGER.error("Connection failed: %s", err)
-        raise ConnectionError("Cannot connect to device") from err
-    except Exception as err:
-        error_msg = str(err)
-        if "Cannot connect to host" in error_msg or "Connect call failed" in error_msg:
-            _LOGGER.error("Connection failed: %s", err)
-            raise ConnectionError("Cannot connect to device") from err
-        _LOGGER.error("Unexpected error during connection: %s", err)
-        raise ConnectionError("Cannot connect to device") from err
+        device = await api.get_device()
+    except EatonError as err:
+        _LOGGER.debug("Failed to retrieve device serial number: %s", err)
+        return None
+
+    result = device.get("result")
+    return result.get("inverterSerialNumber") if isinstance(result, dict) else None
 
 
-def _classify_auth_error(err: ValueError) -> str:
-    """Map a ValueError from connection test to a translation error key."""
-    error_message = str(err).strip()
-    # Account locked: API returns error code "10"; match both formats
-    if error_message == "10" or "Error during authentication: 10" in error_message:
-        return "auth_error_locked"
-    if "wrong credentials" in error_message.lower():
+def _is_valid_host(host: str) -> bool:
+    """Return True for a bare address or hostname with an optional usable port."""
+    match = HOST_PATTERN.match(host)
+    if match is None:
+        return False
+    port = match["port"]
+    return port is None or 1 <= int(port) <= 65535
+
+
+def _classify_auth_error(err: EatonAuthError) -> str:
+    """Map an authentication failure to a translation error key."""
+    if translation_key := AUTH_ERROR_CODES.get(err.err_code):
+        return translation_key
+
+    # Older firmware only reports a description, so fall back to its wording.
+    message = err.message.lower()
+    if "wrong credentials" in message:
         return "err_wrong_credentials"
-    if "invalid inverter" in error_message.lower():
+    if "invalid inverter" in message:
         return "err_invalid_inverter_sn"
-    if "non-JSON response" in error_message:
-        return "auth_non_json_response"
-    if "unexpected response" in error_message:
-        return "auth_unexpected_response"
     return "invalid_auth"
 
 
 def _build_user_schema(
-    user_type: str = "customer",
+    user_type: str = ACCOUNT_TYPE_CUSTOMER,
     defaults: dict[str, Any] | None = None,
 ) -> vol.Schema:
     """Build the data schema for user/options/reauth forms."""
@@ -113,8 +115,12 @@ def _build_user_schema(
             vol.Required(CONF_USER_TYPE, default=user_type): sel.SelectSelector(
                 sel.SelectSelectorConfig(
                     options=[
-                        sel.SelectOptionDict(value="customer", label="Customer"),
-                        sel.SelectOptionDict(value="tech", label="Technician"),
+                        sel.SelectOptionDict(
+                            value=ACCOUNT_TYPE_CUSTOMER, label="Customer"
+                        ),
+                        sel.SelectOptionDict(
+                            value=ACCOUNT_TYPE_TECHNICIAN, label="Technician"
+                        ),
                     ],
                     mode=sel.SelectSelectorMode.DROPDOWN,
                 )
@@ -122,9 +128,8 @@ def _build_user_schema(
             vol.Required(
                 CONF_USERNAME, default=defaults.get(CONF_USERNAME, "")
             ): sel.TextSelector(),
-            vol.Required(
-                CONF_PASSWORD, default=defaults.get(CONF_PASSWORD, "")
-            ): sel.TextSelector(
+            # Never prefill the password: it would be sent to the browser.
+            vol.Required(CONF_PASSWORD): sel.TextSelector(
                 sel.TextSelectorConfig(type=sel.TextSelectorType.PASSWORD)
             ),
             vol.Optional(
@@ -133,21 +138,44 @@ def _build_user_schema(
             vol.Optional(
                 CONF_HAS_PV, default=defaults.get(CONF_HAS_PV, False)
             ): sel.BooleanSelector(),
+            vol.Optional(
+                CONF_VERIFY_SSL,
+                default=defaults.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
+            ): sel.BooleanSelector(),
         }
     )
+
+
+async def _async_validate_input(
+    hass: HomeAssistant, user_input: dict[str, Any], errors: dict[str, str]
+) -> str | None:
+    """Validate the form input, filling errors and returning the device serial."""
+    if not _is_valid_host(user_input[CONF_HOST]):
+        errors[CONF_HOST] = "invalid_host"
+        return None
+
+    if (
+        user_input[CONF_USER_TYPE] == ACCOUNT_TYPE_TECHNICIAN
+        and not user_input[CONF_INVERTER_SN]
+    ):
+        errors[CONF_INVERTER_SN] = "required_inverter_sn"
+        return None
+
+    try:
+        return await _async_test_connection(hass, user_input)
+    except EatonAuthError as err:
+        errors["base"] = _classify_auth_error(err)
+    except EatonError as err:
+        _LOGGER.debug("Connection test failed: %s", err)
+        errors["base"] = "cannot_connect"
+    return None
 
 
 class EatonXStorageConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Eaton xStorage Home."""
 
-    VERSION = 1
+    VERSION = 2
     MINOR_VERSION = 1
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> EatonXStorageOptionsFlow:
-        """Create the options flow."""
-        return EatonXStorageOptionsFlow(config_entry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -156,57 +184,51 @@ class EatonXStorageConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            host = user_input[CONF_HOST]
-            username = user_input[CONF_USERNAME]
-            password = user_input[CONF_PASSWORD]
-            user_type = user_input[CONF_USER_TYPE]
-            inverter_sn = user_input.get(CONF_INVERTER_SN, "")
-            email = "anything@anything.com"  # Hardcoded per API requirements
+            serial = await _async_validate_input(self.hass, user_input, errors)
+            unique_id = serial or user_input[CONF_INVERTER_SN]
+            if not errors and not unique_id:
+                # The host is the only other candidate and it moves with DHCP,
+                # which would orphan every entity. Better to ask for a retry.
+                errors["base"] = "unknown_serial"
+            if not errors:
+                host = user_input[CONF_HOST]
+                # Key the entry on the serial so a device that moves to another
+                # address updates its host instead of being added a second time.
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured(updates={CONF_HOST: host})
 
-            # Conditional validation: inverter_sn required only for technician accounts
-            if user_type == "tech" and not inverter_sn:
-                errors[CONF_INVERTER_SN] = "required_inverter_sn"
-            else:
-                try:
-                    # Test connection and retrieve inverter serial if available
-                    device_serial = await _async_test_connection(
-                        self.hass,
-                        host, username, password, inverter_sn, email, user_type,
-                    )
-                except ConnectionError:
-                    errors["base"] = "cannot_connect"
-                except ValueError as err:
-                    errors["base"] = _classify_auth_error(err)
-                except Exception:  # pylint: disable=broad-except
-                    _LOGGER.exception("Unexpected error during connection test")
-                    errors["base"] = "unknown"
-                else:
-                    # Determine a per-device unique_id using inverter serial if present
-                    unique_suffix = device_serial or inverter_sn or username
-                    unique_id = f"{host}_{unique_suffix}" if unique_suffix else host
-                    await self.async_set_unique_id(unique_id)
-                    self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title="Eaton xStorage Home",
+                    data={**user_input, CONF_EMAIL: API_EMAIL},
+                )
 
-                    entry_data = dict(user_input)
-                    entry_data["email"] = email
-                    return self.async_create_entry(
-                        title="Eaton xStorage Home", data=entry_data
-                    )
+        defaults = user_input or {}
 
-        # Determine user_type for form defaults (prefer previously selected value)
-        user_type = (
-            user_input.get(CONF_USER_TYPE, "customer") if user_input else "customer"
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_build_user_schema(
+                user_type=defaults.get(CONF_USER_TYPE, ACCOUNT_TYPE_CUSTOMER),
+                defaults=defaults,
+            ),
+            errors=errors,
         )
 
-        schema = _build_user_schema(user_type=user_type)
-
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
-
-    async def async_step_reauth(
-        self, entry_data: dict[str, Any]
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, _entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle reauth when credentials expire."""
         return await self.async_step_reauth_confirm()
+
+    async def _async_check_identity(
+        self, entry: ConfigEntry, serial: str | None
+    ) -> None:
+        """Refuse a flow that points the entry at a different inverter."""
+        if not serial or serial == entry.unique_id:
+            return
+        if entry.unique_id == entry.data[CONF_HOST]:
+            # Entries created before the serial was readable were keyed on the
+            # host; this is the only chance to give them a stable identity.
+            return
+        await self.async_set_unique_id(serial)
+        self._abort_if_unique_id_mismatch()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
@@ -216,110 +238,50 @@ class EatonXStorageConfigFlow(ConfigFlow, domain=DOMAIN):
         reauth_entry = self._get_reauth_entry()
 
         if user_input is not None:
-            host = user_input[CONF_HOST]
-            username = user_input[CONF_USERNAME]
-            password = user_input[CONF_PASSWORD]
-            user_type = user_input[CONF_USER_TYPE]
-            inverter_sn = user_input.get(CONF_INVERTER_SN, "")
-            email = "anything@anything.com"
+            serial = await _async_validate_input(self.hass, user_input, errors)
+            if not errors:
+                await self._async_check_identity(reauth_entry, serial)
+                return self.async_update_reload_and_abort(
+                    reauth_entry,
+                    unique_id=serial or reauth_entry.unique_id,
+                    data_updates={**user_input, CONF_EMAIL: API_EMAIL},
+                )
 
-            if user_type == "tech" and not inverter_sn:
-                errors[CONF_INVERTER_SN] = "required_inverter_sn"
-            else:
-                try:
-                    await _async_test_connection(
-                        self.hass,
-                        host, username, password, inverter_sn, email, user_type,
-                    )
-                except ConnectionError:
-                    errors["base"] = "cannot_connect"
-                except ValueError as err:
-                    errors["base"] = _classify_auth_error(err)
-                except Exception:  # pylint: disable=broad-except
-                    _LOGGER.exception("Unexpected error during reauth")
-                    errors["base"] = "unknown"
-                else:
-                    entry_data = dict(user_input)
-                    entry_data["email"] = email
-                    return self.async_update_reload_and_abort(
-                        reauth_entry, data=entry_data
-                    )
-
-        current_data = reauth_entry.data
-        user_type = (
-            user_input.get(CONF_USER_TYPE, current_data.get(CONF_USER_TYPE, "customer"))
-            if user_input
-            else current_data.get(CONF_USER_TYPE, "customer")
-        )
-
-        schema = _build_user_schema(user_type=user_type, defaults=dict(current_data))
+        defaults = user_input or dict(reauth_entry.data)
 
         return self.async_show_form(
-            step_id="reauth_confirm", data_schema=schema, errors=errors
+            step_id="reauth_confirm",
+            data_schema=_build_user_schema(
+                user_type=defaults.get(CONF_USER_TYPE, ACCOUNT_TYPE_CUSTOMER),
+                defaults=defaults,
+            ),
+            errors=errors,
         )
 
-
-class EatonXStorageOptionsFlow(OptionsFlow):
-    """Handle options flow for Eaton xStorage Home."""
-
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow.
-
-        NOTE: Home Assistant now exposes the active ConfigEntry on
-        `self.config_entry` in OptionsFlow. We accept the `config_entry`
-        argument for backwards compatibility with older HA versions, but we
-        do not assign it to an attribute to avoid the deprecation warning
-        about setting `config_entry` explicitly.
-        """
-        super().__init__()
-
-    async def async_step_init(
+    async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Manage the options."""
+        """Change the connection settings of an existing entry."""
         errors: dict[str, str] = {}
+        reconfigure_entry = self._get_reconfigure_entry()
+
         if user_input is not None:
-            user_type = user_input[CONF_USER_TYPE]
-            inverter_sn = user_input.get(CONF_INVERTER_SN, "")
+            serial = await _async_validate_input(self.hass, user_input, errors)
+            if not errors:
+                await self._async_check_identity(reconfigure_entry, serial)
+                return self.async_update_reload_and_abort(
+                    reconfigure_entry,
+                    unique_id=serial or reconfigure_entry.unique_id,
+                    data_updates={**user_input, CONF_EMAIL: API_EMAIL},
+                )
 
-            # Conditional validation for technician inverter serial number
-            if user_type == "tech" and not inverter_sn:
-                errors[CONF_INVERTER_SN] = "required_inverter_sn"
-            else:
-                try:
-                    await _async_test_connection(
-                        self.hass,
-                        user_input[CONF_HOST],
-                        user_input[CONF_USERNAME],
-                        user_input[CONF_PASSWORD],
-                        inverter_sn,
-                        "anything@anything.com",
-                        user_type,
-                    )
-                except ConnectionError:
-                    errors["base"] = "cannot_connect"
-                except ValueError as err:
-                    errors["base"] = _classify_auth_error(err)
-                except Exception:  # pylint: disable=broad-except
-                    _LOGGER.exception("Unexpected error during connection test")
-                    errors["base"] = "unknown"
-                else:
-                    entry_data = dict(user_input)
-                    entry_data["email"] = "anything@anything.com"
-                    self.hass.config_entries.async_update_entry(
-                        self.config_entry, data=entry_data
-                    )
-                    return self.async_create_entry(title="", data={})
+        defaults = user_input or dict(reconfigure_entry.data)
 
-        current_data = self.config_entry.data
-        user_type = (
-            user_input.get(CONF_USER_TYPE, current_data.get(CONF_USER_TYPE, "customer"))
-            if user_input
-            else current_data.get(CONF_USER_TYPE, "customer")
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=_build_user_schema(
+                user_type=defaults.get(CONF_USER_TYPE, ACCOUNT_TYPE_CUSTOMER),
+                defaults=defaults,
+            ),
+            errors=errors,
         )
-
-        schema = _build_user_schema(
-            user_type=user_type, defaults=dict(current_data)
-        )
-
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)

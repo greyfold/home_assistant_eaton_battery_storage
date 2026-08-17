@@ -5,7 +5,6 @@ The xStorage Home inverter has poor energy monitoring accuracy. Power measuremen
 (consumption, production, grid values, load values) are typically 10%-30% higher than
 actual values. This affects all energy flow data returned by the API endpoints:
 - /api/device/status (energyFlow section)
-- /api/metrics and /api/metrics/daily
 - All power-related values in watts
 
 Use external energy monitoring for accurate power measurements.
@@ -13,18 +12,64 @@ Use external energy monitoring for accurate power measurements.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-import asyncio
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import aiohttp
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
+
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=15, connect=5)
+
+# The device rejects tokens after an hour; refresh slightly before that.
+TOKEN_LIFETIME = timedelta(minutes=55)
+
+
+class EatonError(HomeAssistantError):
+    """Base error for the Eaton xStorage Home API."""
+
+
+class EatonConnectionError(EatonError):
+    """The device could not be reached."""
+
+
+class EatonResponseError(EatonError):
+    """The device returned a response that could not be interpreted."""
+
+
+class EatonCommandError(EatonError):
+    """The device rejected a command."""
+
+
+class EatonAuthError(EatonError):
+    """The device rejected the supplied credentials."""
+
+    def __init__(self, err_code: str, message: str) -> None:
+        """Initialize with the machine-readable error code from the device."""
+        super().__init__(message)
+        self.err_code = err_code
+        self.message = message
+
+
+def token_store_key(entry_id: str) -> str:
+    """Return the .storage key holding the token for a config entry."""
+    return f"{DOMAIN}.{entry_id}_token"
+
+
+def _require_success(endpoint: str, result: dict[str, Any]) -> dict[str, Any]:
+    """Raise when the device reports a command as unsuccessful."""
+    if not result.get("successful", result.get("result") is not None):
+        raise EatonCommandError(f"Device rejected {endpoint}: {result}")
+    return result
 
 
 class EatonBatteryAPI:
@@ -42,6 +87,8 @@ class EatonBatteryAPI:
         name: str,
         manufacturer: str,
         user_type: str = "tech",
+        verify_ssl: bool = False,
+        entry_id: str | None = None,
     ) -> None:
         """Initialize the API client."""
         self.hass = hass
@@ -54,16 +101,21 @@ class EatonBatteryAPI:
         self.name = name
         self.manufacturer = manufacturer
         self.user_type = user_type  # "customer" or "tech"
+        self.verify_ssl = verify_ssl
         self.access_token: str | None = None
         self.token_expiration: datetime | None = None
-        self.store = Store(hass, 1, f"{host}_token")
+        self._session = async_get_clientsession(hass, verify_ssl=verify_ssl)
+        self._auth_lock = asyncio.Lock()
+        # Config flow probes have no entry yet and must not persist a token.
+        self._store: Store | None = (
+            Store(hass, 1, token_store_key(entry_id)) if entry_id else None
+        )
 
     async def connect(self) -> None:
         """Authenticate with the device and get access token."""
         url = f"https://{self.host}/api/auth/signin"
 
-        # Build payload based on user type
-        payload = {
+        payload: dict[str, Any] = {
             "username": self.username,
             "pwd": self.password,
             "userType": self.user_type,
@@ -74,59 +126,59 @@ class EatonBatteryAPI:
             payload["inverterSn"] = self.inverter_sn
             payload["email"] = self.email
 
-        session = async_get_clientsession(self.hass)
         try:
-            async with session.post(
-                url,
-                json=payload,
-                ssl=False,
-                timeout=aiohttp.ClientTimeout(total=15, connect=5),
+            async with self._session.post(
+                url, json=payload, timeout=REQUEST_TIMEOUT
             ) as response:
-                if response.content_type == "application/json":
-                    result = await response.json()
-                else:
-                    text = await response.text()
-                    _LOGGER.error(
-                        "Non-JSON auth response (%s): %s", response.status, text
-                    )
-                    raise ValueError("Authentication failed: non-JSON response")
+                status = response.status
+                is_json = response.content_type == "application/json"
+                body: Any = await response.json() if is_json else await response.text()
+        except TimeoutError as err:
+            raise EatonConnectionError("Authentication timed out") from err
+        except aiohttp.ClientError as err:
+            raise EatonConnectionError(f"Cannot connect to device: {err}") from err
 
-                if (
-                    response.status == 200
-                    and result.get("successful")
-                    and "token" in result.get("result", {})
-                ):
-                    self.access_token = result["result"]["token"]
-                    self.token_expiration = datetime.now(timezone.utc) + timedelta(minutes=55)
-                    await self.store_token()
-                    _LOGGER.info("Connected successfully. Bearer token acquired.")
-                elif "error" in result:
-                    err = result["error"]
-                    err_msg = (
-                        err.get("description")
-                        or err.get("errCode")
-                        or "Authentication failed"
-                    )
-                    raise ValueError(err_msg)
-                else:
-                    _LOGGER.warning("Authentication failed: %s", result)
-                    raise ValueError("Authentication failed with unexpected response.")
-        except asyncio.CancelledError:
-            # Propagate cancellation (reload/shutdown), do not log as error
-            raise
-        except asyncio.TimeoutError as e:
-            _LOGGER.error("Authentication timed out: %s", e)
-            raise ConnectionError("Authentication timed out") from e
-        except aiohttp.ClientError as e:
-            _LOGGER.error("Network error during authentication: %s", e)
-            raise ConnectionError(f"Cannot connect to device: {e}") from e
-        except Exception as e:
-            _LOGGER.error("Error during authentication: %s", e)
-            raise
+        if not is_json:
+            _LOGGER.error("Non-JSON auth response (%s): %s", status, body)
+            # A login page or a proxy error is a reachability problem, not a
+            # rejected credential; raising an auth error would prompt reauth.
+            raise EatonConnectionError(
+                f"Sign-in returned a non-JSON response (status {status})"
+            )
+
+        if not isinstance(body, dict):
+            raise EatonResponseError(
+                f"Sign-in returned an unexpected payload (status {status}): {body}"
+            )
+
+        if (
+            status == 200
+            and body.get("successful")
+            and "token" in body.get("result", {})
+        ):
+            self.access_token = body["result"]["token"]
+            self.token_expiration = datetime.now(UTC) + TOKEN_LIFETIME
+            await self.store_token()
+            _LOGGER.debug("Connected successfully, bearer token acquired")
+            return
+
+        error = body.get("error")
+        if isinstance(error, dict):
+            raise EatonAuthError(
+                str(error.get("errCode") or ""),
+                str(error.get("description") or "Authentication failed"),
+            )
+
+        _LOGGER.warning("Authentication failed: %s", body)
+        raise EatonConnectionError(
+            "Sign-in returned no token and no error the device explains"
+        )
 
     async def store_token(self) -> None:
         """Store the access token to persistent storage."""
-        await self.store.async_save(
+        if self._store is None:
+            return
+        await self._store.async_save(
             {
                 "access_token": self.access_token,
                 "token_expiration": self.token_expiration.isoformat()
@@ -137,32 +189,68 @@ class EatonBatteryAPI:
 
     async def load_token(self) -> None:
         """Load the access token from persistent storage."""
-        data = await self.store.async_load()
-        if data:
-            self.access_token = data.get("access_token")
-            expiration_str = data.get("token_expiration")
-            if expiration_str:
-                # Normalize naive datetimes from older versions to timezone-aware
-                loaded_dt = datetime.fromisoformat(expiration_str)
-                if loaded_dt.tzinfo is None:
-                    self.token_expiration = loaded_dt.replace(tzinfo=timezone.utc)
-                else:
-                    self.token_expiration = loaded_dt
+        if self._store is None:
+            return
+        data = await self._store.async_load()
+        if not data:
+            return
+        self.access_token = data.get("access_token")
+        expiration_str = data.get("token_expiration")
+        if expiration_str:
+            # Normalize naive datetimes from older versions to timezone-aware
+            loaded_dt = datetime.fromisoformat(expiration_str)
+            if loaded_dt.tzinfo is None:
+                self.token_expiration = loaded_dt.replace(tzinfo=UTC)
+            else:
+                self.token_expiration = loaded_dt
+
+    async def remove_token(self) -> None:
+        """Remove the persisted access token."""
+        if self._store is not None:
+            await self._store.async_remove()
 
     async def refresh_token(self) -> None:
         """Refresh the access token."""
-        _LOGGER.info("Refreshing access token...")
+        _LOGGER.debug("Refreshing access token")
         await self.connect()
+
+    def _token_valid(self) -> bool:
+        """Return True if a usable, unexpired token is held."""
+        return bool(
+            self.access_token
+            and self.token_expiration
+            and datetime.now(UTC) < self.token_expiration
+        )
 
     async def ensure_token_valid(self) -> None:
         """Ensure the access token is valid and refresh if needed."""
-        if (
-            not self.access_token
-            or not self.token_expiration
-            or datetime.now(timezone.utc) >= self.token_expiration
-        ):
-            _LOGGER.info("Token missing or expired. Re-authenticating...")
+        if self._token_valid():
+            return
+        async with self._auth_lock:
+            # Another concurrent request may have refreshed while we waited.
+            if self._token_valid():
+                return
+            if self.access_token is None:
+                await self.load_token()
+                if self._token_valid():
+                    return
             await self.refresh_token()
+
+    async def _send(
+        self, method: str, url: str, kwargs: dict[str, Any]
+    ) -> tuple[int, Any]:
+        """Perform a single HTTP request and return its status and body."""
+        try:
+            async with self._session.request(method, url, **kwargs) as response:
+                if response.content_type == "application/json":
+                    return response.status, await response.json()
+                return response.status, await response.text()
+        except TimeoutError as err:
+            raise EatonConnectionError(f"Request to {url} timed out") from err
+        except aiohttp.ClientError as err:
+            raise EatonConnectionError(
+                f"Network error requesting {url}: {err}"
+            ) from err
 
     async def make_request(
         self,
@@ -171,69 +259,45 @@ class EatonBatteryAPI:
         params: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """Make an authenticated API request."""
+        """Make an authenticated API request.
+
+        Raises EatonConnectionError / EatonResponseError instead of returning an
+        error payload, so callers can treat "no exception" as success.
+        """
         await self.ensure_token_valid()
 
         url = f"https://{self.host}{endpoint}"
-        headers = kwargs.get("headers", {})
+        headers = dict(kwargs.get("headers", {}))
         headers["Authorization"] = f"Bearer {self.access_token}"
         kwargs["headers"] = headers
-        kwargs["ssl"] = False
-        # Enforce a reasonable timeout to avoid long-hanging requests during reloads
-        if "timeout" not in kwargs:
-            kwargs["timeout"] = aiohttp.ClientTimeout(total=15, connect=5)
-
-        # Add query parameters if provided
+        kwargs.setdefault("timeout", REQUEST_TIMEOUT)
         if params:
             kwargs["params"] = params
 
-        session = async_get_clientsession(self.hass)
-        try:
-            async with session.request(method, url, **kwargs) as response:
-                if response.status == 401:
-                    _LOGGER.warning("Access token expired. Refreshing token...")
-                    await self.refresh_token()
-                    headers["Authorization"] = f"Bearer {self.access_token}"
-                    kwargs["headers"] = headers
-                    async with session.request(method, url, **kwargs) as retry_response:
-                        if retry_response.content_type == "application/json":
-                            return await retry_response.json()
-                        text_response = await retry_response.text()
-                        _LOGGER.error(
-                            "Non-JSON response from %s: Status %s, Content: %s",
-                            endpoint,
-                            retry_response.status,
-                            text_response,
-                        )
-                        return {"successful": False, "error": text_response}
+        status, body = await self._send(method, url, kwargs)
+        if status == 401:
+            _LOGGER.debug("Access token rejected by %s, re-authenticating", endpoint)
+            await self.refresh_token()
+            headers["Authorization"] = f"Bearer {self.access_token}"
+            status, body = await self._send(method, url, kwargs)
 
-                # Handle different response types
-                if response.content_type == "application/json":
-                    return await response.json()
-                text_response = await response.text()
-                _LOGGER.error(
-                    "Non-JSON response from %s: Status %s, Content: %s",
-                    endpoint,
-                    response.status,
-                    text_response,
-                )
-                return {
-                    "successful": False,
-                    "error": text_response,
-                    "status": response.status,
-                }
-        except asyncio.CancelledError:
-            # Propagate cancellation so HA can handle reload/shutdown gracefully
-            raise
-        except asyncio.TimeoutError as e:
-            _LOGGER.error("API request to %s timed out: %s", endpoint, e)
-            return {"successful": False, "error": "timeout"}
-        except aiohttp.ClientError as e:
-            _LOGGER.error("Network error during API request to %s: %s", endpoint, e)
-            return {"successful": False, "error": str(e)}
-        except Exception as e:
-            _LOGGER.error("Error during API request to %s: %s", endpoint, e)
-            return {"successful": False, "error": str(e)}
+        # A 401 that survives a fresh token means the account no longer has
+        # access, which reauth can resolve; anything else is a hard failure.
+        if status == 401:
+            raise EatonAuthError("401", f"{endpoint} rejected the access token")
+        if status >= 400:
+            raise EatonResponseError(f"{endpoint} returned HTTP {status}: {body}")
+
+        if isinstance(body, dict):
+            return body
+
+        # Some write endpoints answer with an empty body on success.
+        if status < 300 and not str(body).strip():
+            return {}
+
+        raise EatonResponseError(
+            f"Non-JSON response from {endpoint} (status {status}): {body}"
+        )
 
     async def get_status(self) -> dict[str, Any]:
         """Get device status."""
@@ -250,14 +314,6 @@ class EatonBatteryAPI:
     async def get_settings(self) -> dict[str, Any]:
         """Get device settings."""
         return await self.make_request("GET", "/api/settings")
-
-    async def get_metrics(self) -> dict[str, Any]:
-        """Get device metrics."""
-        return await self.make_request("GET", "/api/metrics")
-
-    async def get_metrics_daily(self) -> dict[str, Any]:
-        """Get daily metrics."""
-        return await self.make_request("GET", "/api/metrics/daily")
 
     async def get_schedule(self) -> dict[str, Any]:
         """Get device schedule."""
@@ -278,7 +334,7 @@ class EatonBatteryAPI:
         offset: int | None = None,
     ) -> dict[str, Any]:
         """Get notifications with optional filtering."""
-        params = {}
+        params: dict[str, Any] = {}
         if status:
             params["status"] = status
         if size is not None:
@@ -294,10 +350,18 @@ class EatonBatteryAPI:
 
     async def mark_all_notifications_read(self) -> dict[str, Any]:
         """Mark all notifications as read."""
-        return await self.make_request("POST", "/api/notifications/read/all")
+        return _require_success(
+            "mark all notifications read",
+            await self.make_request("POST", "/api/notifications/read/all"),
+        )
 
     async def set_device_power(self, state: bool) -> dict[str, Any]:
-        """Control the power state of the device (on/off)."""
+        """Control the power state of the device (on/off).
+
+        This endpoint answers 200 with a bare JSON "" rather than a result
+        object, so there is nothing to check for success. See
+        docs/device-api-behaviour.md.
+        """
         payload = {"parameters": {"state": state}}
         return await self.make_request("POST", "/api/device/power", json=payload)
 
@@ -313,12 +377,22 @@ class EatonBatteryAPI:
         _LOGGER.debug(
             "Sending device command: %s", json.dumps(payload, separators=(",", ":"))
         )
-        return await self.make_request("POST", "/api/device/command", json=payload)
+        return _require_success(
+            command,
+            await self.make_request("POST", "/api/device/command", json=payload),
+        )
 
     async def update_settings(self, settings_data: dict[str, Any]) -> dict[str, Any]:
-        """Update device settings via PUT /api/settings."""
+        """Update device settings via PUT /api/settings.
+
+        The device redirects this to the trailing-slash path with a 307, which
+        aiohttp follows while preserving the method.
+        """
         _LOGGER.debug(
             "Sending settings update: %s",
             json.dumps(settings_data, separators=(",", ":")),
         )
-        return await self.make_request("PUT", "/api/settings", json=settings_data)
+        return _require_success(
+            "settings update",
+            await self.make_request("PUT", "/api/settings", json=settings_data),
+        )

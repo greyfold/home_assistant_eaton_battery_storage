@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
+
+from .coordinator import EatonConfigEntry
 
 TO_REDACT = {
     "password",
@@ -21,7 +22,7 @@ TO_REDACT = {
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant, entry: EatonConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = entry.runtime_data

@@ -2,28 +2,22 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-if TYPE_CHECKING:
-    from .coordinator import EatonBatteryStorageCoordinator
-
-    type EatonBatteryStorageConfigEntry = ConfigEntry[EatonBatteryStorageCoordinator]
-
-_LOGGER = logging.getLogger(__name__)
+from .const import ACCOUNT_TYPE_TECHNICIAN, CONF_USER_TYPE
+from .coordinator import EatonConfigEntry, EatonXstorageHomeCoordinator
+from .entity import EatonEntity
 
 PARALLEL_UPDATES = 0
 
@@ -33,10 +27,11 @@ class EatonBatteryStorageBinarySensorEntityDescription(BinarySensorEntityDescrip
     """Class describing Eaton Battery Storage binary sensor entities."""
 
     is_on_fn: Callable[[dict[str, Any]], bool | None]
+    technician_only: bool = False
 
 
 DESCRIPTIONS = [
-    EatonBatteryStorageBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+    EatonBatteryStorageBinarySensorEntityDescription(
         key="battery_charging",
         translation_key="battery_charging",
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
@@ -45,7 +40,7 @@ DESCRIPTIONS = [
             == "BAT_CHARGING"
         ),
     ),
-    EatonBatteryStorageBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+    EatonBatteryStorageBinarySensorEntityDescription(
         key="battery_discharging",
         translation_key="battery_discharging",
         device_class=BinarySensorDeviceClass.POWER,
@@ -54,18 +49,40 @@ DESCRIPTIONS = [
             == "BAT_DISCHARGING"
         ),
     ),
-    EatonBatteryStorageBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+    EatonBatteryStorageBinarySensorEntityDescription(
         key="inverter_power_state",
         translation_key="inverter_power_state",
         device_class=BinarySensorDeviceClass.POWER,
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         is_on_fn=lambda data: bool(data.get("device", {}).get("powerState")),
     ),
-    EatonBatteryStorageBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+    EatonBatteryStorageBinarySensorEntityDescription(
+        key="energy_saving_mode_activated",
+        translation_key="energy_saving_mode_activated",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_on_fn=lambda data: bool(
+            data.get("status", {})
+            .get("energyFlow", {})
+            .get("energySavingModeActivated")
+        ),
+    ),
+    EatonBatteryStorageBinarySensorEntityDescription(
+        key="bms_fault",
+        translation_key="bms_fault",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        technician_only=True,
+        is_on_fn=lambda data: bool(
+            data.get("technical_status", {}).get("bmsFaultCode")
+        ),
+    ),
+    EatonBatteryStorageBinarySensorEntityDescription(
         key="has_unread_notifications",
         translation_key="has_unread_notifications",
+        entity_category=EntityCategory.DIAGNOSTIC,
         is_on_fn=lambda data: (
-            data.get("unread_notifications_count", {}).get("total", 0) > 0
+            (data.get("unread_notifications_count", {}).get("total") or 0) > 0
         ),
     ),
 ]
@@ -73,25 +90,30 @@ DESCRIPTIONS = [
 
 async def async_setup_entry(
     _hass: HomeAssistant,
-    entry: EatonBatteryStorageConfigEntry,
+    entry: EatonConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Eaton Battery Storage binary sensor platform."""
     coordinator = entry.runtime_data
+    is_technician = (
+        entry.data.get(CONF_USER_TYPE, ACCOUNT_TYPE_TECHNICIAN)
+        == ACCOUNT_TYPE_TECHNICIAN
+    )
     async_add_entities(
         EatonBatteryStorageBinarySensorEntity(coordinator, description)
         for description in DESCRIPTIONS
+        if is_technician or not description.technician_only
     )
 
 
-class EatonBatteryStorageBinarySensorEntity(CoordinatorEntity, BinarySensorEntity):
+class EatonBatteryStorageBinarySensorEntity(EatonEntity, BinarySensorEntity):
     """Eaton Battery Storage binary sensor entity."""
 
-    _attr_has_entity_name = True
+    entity_description: EatonBatteryStorageBinarySensorEntityDescription
 
     def __init__(
         self,
-        coordinator: EatonBatteryStorageCoordinator,
+        coordinator: EatonXstorageHomeCoordinator,
         description: EatonBatteryStorageBinarySensorEntityDescription,
     ) -> None:
         """Initialize the binary sensor."""
@@ -103,17 +125,4 @@ class EatonBatteryStorageBinarySensorEntity(CoordinatorEntity, BinarySensorEntit
     @property
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
-        try:
-            return self.entity_description.is_on_fn(self.coordinator.data or {})
-        except (KeyError, ValueError, TypeError) as exc:
-            _LOGGER.error(
-                "Error retrieving binary state for %s: %s",
-                self.entity_description.key,
-                exc,
-            )
-            return None
-
-    @property
-    def device_info(self) -> dict[str, str]:
-        """Return device information."""
-        return self.coordinator.device_info
+        return self.entity_description.is_on_fn(self.coordinator.data or {})

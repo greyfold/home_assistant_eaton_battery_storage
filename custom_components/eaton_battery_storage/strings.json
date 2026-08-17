@@ -1,442 +1,506 @@
 {
-    "config": {
-        "step": {
-            "user": {
-                "description": "Configure your Eaton xStorage Home system. Choose Customer for basic access or Technician for advanced diagnostics (requires technician credentials and inverter serial number).",
-                "data": {
-                    "host": "Device IP Address or Hostname",
-                    "user_type": "Account Type",
-                    "username": "Username",
-                    "password": "Password",
-                    "inverter_sn": "Inverter Serial Number (Technician only)",
-                    "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
-                },
-                "data_description": {
-                    "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials. Defaults: Customer — user/user; Technician — admin/jlwgK41G.",
-                    "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels."
-                }
-            },
-            "reauth_confirm": {
-                "description": "Re-authenticate with your Eaton xStorage Home system. Your credentials may have expired or changed.",
-                "data": {
-                    "host": "Device IP Address or Hostname",
-                    "user_type": "Account Type",
-                    "username": "Username",
-                    "password": "Password",
-                    "inverter_sn": "Inverter Serial Number (Technician only)",
-                    "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
-                },
-                "data_description": {
-                    "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials.",
-                    "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system."
-                }
-            }
+  "config": {
+    "step": {
+      "user": {
+        "description": "Configure your Eaton xStorage Home system. Choose Customer for basic access or Technician for advanced diagnostics (requires technician credentials and inverter serial number).",
+        "data": {
+          "host": "Device IP Address or Hostname",
+          "user_type": "Account Type",
+          "username": "Username",
+          "password": "Password",
+          "inverter_sn": "Inverter Serial Number (Technician only)",
+          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)",
+          "verify_ssl": "Verify SSL certificate"
         },
-        "error": {
-            "cannot_connect": "Failed to connect to the device. Please check your network connection and device settings.",
-            "invalid_auth": "Authentication failed. Please check your credentials.",
-            "err_invalid_inverter_sn": "Invalid inverter serial number.",
-            "err_wrong_credentials": "Wrong username or password.",
-            "auth_error_locked": "Your account was locked due to too many failed login attempts. Please try again in 10 minutes.",
-            "auth_unexpected_response": "Authentication failed with an unexpected response from the device.",
-            "auth_non_json_response": "Authentication failed: the device returned a non-JSON response.",
-            "required_inverter_sn": "Inverter serial number required for technician account.",
-            "unknown": "Unexpected error occurred during setup."
-        },
-        "abort": {
-            "single_instance_allowed": "Only a single instance is allowed."
+        "data_description": {
+          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials. The default credentials for both are listed in the integration documentation.",
+          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels.",
+          "verify_ssl": "The inverter ships with a self-signed certificate, so verification is off by default. Enable it only if you installed a trusted certificate on the device."
         }
+      },
+      "reauth_confirm": {
+        "description": "Re-authenticate with your Eaton xStorage Home system. Your credentials may have expired or changed.",
+        "data": {
+          "host": "Device IP Address or Hostname",
+          "user_type": "Account Type",
+          "username": "Username",
+          "password": "Password",
+          "inverter_sn": "Inverter Serial Number (Technician only)",
+          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials.",
+          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system.",
+          "verify_ssl": "The inverter ships with a self-signed certificate, so verification is off by default."
+        }
+      },
+      "reconfigure": {
+        "description": "Update the connection settings for your Eaton xStorage Home system. Changing these reloads the integration.",
+        "data": {
+          "host": "Device IP Address or Hostname",
+          "user_type": "Account Type",
+          "username": "Username",
+          "password": "Password",
+          "inverter_sn": "Inverter Serial Number (Technician only)",
+          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials.",
+          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels.",
+          "verify_ssl": "The inverter ships with a self-signed certificate, so verification is off by default. Enable it only if you installed a trusted certificate on the device."
+        }
+      }
     },
-    "options": {
-        "step": {
-            "init": {
-                "description": "Update your Eaton xStorage Home configuration. Choose Customer for basic access or Technician for advanced diagnostics. Enable PV sensors only if you have solar panels connected to your system.",
-                "data": {
-                    "host": "Device IP Address or Hostname",
-                    "user_type": "Account Type",
-                    "username": "Username",
-                    "password": "Password",
-                    "inverter_sn": "Inverter Serial Number (Technician only)",
-                    "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
-                },
-                "data_description": {
-                    "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials.",
-                    "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels."
-                }
-            }
-        },
-        "error": {
-            "cannot_connect": "Failed to connect to the device. Please check your network connection and device settings.",
-            "invalid_auth": "Authentication failed. Please check your credentials.",
-            "err_invalid_inverter_sn": "Invalid inverter serial number.",
-            "err_wrong_credentials": "Wrong username or password.",
-            "auth_error_locked": "Your account was locked due to too many failed login attempts. Please try again in 10 minutes.",
-            "auth_unexpected_response": "Authentication failed with an unexpected response from the device.",
-            "auth_non_json_response": "Authentication failed: the device returned a non-JSON response.",
-            "required_inverter_sn": "Inverter serial number required for technician account.",
-            "unknown": "Unexpected error occurred during setup."
-        }
+    "error": {
+      "cannot_connect": "Failed to connect to the device. Please check your network connection and device settings.",
+      "invalid_auth": "Authentication failed. Please check your credentials.",
+      "err_invalid_inverter_sn": "Invalid inverter serial number.",
+      "err_wrong_credentials": "Wrong username or password.",
+      "auth_error_locked": "Your account was locked due to too many failed login attempts. Please try again in 10 minutes.",
+      "required_inverter_sn": "Inverter serial number required for technician account.",
+      "invalid_host": "Enter a valid IP address or hostname, without a scheme or path.",
+      "unknown_serial": "The device did not report its serial number, which is needed to identify it. Please try again, or enter the inverter serial number.",
+      "unknown": "Unexpected error occurred during setup."
     },
-    "system_health": {
-        "info": {
-            "device_reachable": "Device Reachable",
-            "api_host": "API Host",
-            "last_successful_update": "Last Successful Update"
-        }
-    },
-    "entity": {
-        "sensor": {
-            "notifications": {
-                "name": "Notifications"
-            },
-            "status_currentmode_command": {
-                "name": "Current Mode Command"
-            },
-            "status_currentmode_duration": {
-                "name": "Current Mode Duration"
-            },
-            "status_currentmode_starttime": {
-                "name": "Current Mode Start Time"
-            },
-            "status_currentmode_endtime": {
-                "name": "Current Mode End Time"
-            },
-            "status_currentmode_recurrence": {
-                "name": "Current Mode Recurrence"
-            },
-            "status_currentmode_type": {
-                "name": "Current Mode Type"
-            },
-            "status_currentmode_parameters_action": {
-                "name": "Current Mode Action"
-            },
-            "status_currentmode_parameters_power": {
-                "name": "Current Mode Power"
-            },
-            "status_currentmode_parameters_soc": {
-                "name": "Current Mode SOC"
-            },
-            "status_energyflow_acpvrole": {
-                "name": "AC PV Role"
-            },
-            "status_energyflow_acpvvalue": {
-                "name": "AC PV Value"
-            },
-            "status_energyflow_batterybackuplevel": {
-                "name": "Battery Backup Level"
-            },
-            "status_energyflow_batterystatus": {
-                "name": "Battery Status"
-            },
-            "status_energyflow_batteryenergyflow": {
-                "name": "Battery Power"
-            },
-            "status_energyflow_criticalloadrole": {
-                "name": "Critical Load Role"
-            },
-            "status_energyflow_criticalloadvalue": {
-                "name": "Critical Load Value"
-            },
-            "status_energyflow_dcpvrole": {
-                "name": "DC PV Role"
-            },
-            "status_energyflow_dcpvvalue": {
-                "name": "DC PV Value"
-            },
-            "status_energyflow_gridrole": {
-                "name": "Grid Role"
-            },
-            "status_energyflow_gridvalue": {
-                "name": "Grid Power"
-            },
-            "status_energyflow_noncriticalloadrole": {
-                "name": "Non-Critical Load Role"
-            },
-            "status_energyflow_noncriticalloadvalue": {
-                "name": "Non-Critical Load Value"
-            },
-            "status_energyflow_operationmode": {
-                "name": "Operation Mode"
-            },
-            "status_energyflow_selfconsumption": {
-                "name": "Self Consumption"
-            },
-            "status_energyflow_selfsufficiency": {
-                "name": "Self Sufficiency"
-            },
-            "status_energyflow_stateofcharge": {
-                "name": "Battery State of Charge"
-            },
-            "status_energyflow_energysavingmodeenabled": {
-                "name": "Energy Saving Mode Enabled"
-            },
-            "status_energyflow_energysavingmodeactivated": {
-                "name": "Energy Saving Mode Activated"
-            },
-            "status_last30daysenergyflow_gridconsumption": {
-                "name": "30 Days Grid Consumption"
-            },
-            "status_last30daysenergyflow_photovoltaicproduction": {
-                "name": "30 Days PV Production"
-            },
-            "status_last30daysenergyflow_selfconsumption": {
-                "name": "30 Days Self Consumption"
-            },
-            "status_last30daysenergyflow_selfsufficiency": {
-                "name": "30 Days Self Sufficiency"
-            },
-            "status_today_gridconsumption": {
-                "name": "Today's Grid Consumption"
-            },
-            "status_today_photovoltaicproduction": {
-                "name": "Today's PV Production"
-            },
-            "status_today_selfconsumption": {
-                "name": "Today's Self Consumption"
-            },
-            "status_today_selfsufficiency": {
-                "name": "Today's Self Sufficiency"
-            },
-            "device_firmwareversion": {
-                "name": "Firmware Version"
-            },
-            "device_inverterfirmwareversion": {
-                "name": "Inverter Firmware Version"
-            },
-            "device_bmsfirmwareversion": {
-                "name": "BMS Firmware Version"
-            },
-            "device_energysavingmode_houseconsumptionthreshold": {
-                "name": "House Consumption Threshold"
-            },
-            "device_invertermanufacturer": {
-                "name": "Inverter Manufacturer"
-            },
-            "device_invertermodelname": {
-                "name": "Inverter Model Name"
-            },
-            "device_invertervarating": {
-                "name": "Inverter VA Rating"
-            },
-            "device_inverterserialnumber": {
-                "name": "Inverter Serial Number"
-            },
-            "device_inverternominalvpv": {
-                "name": "Inverter Nominal VPV"
-            },
-            "device_bmscapacity": {
-                "name": "BMS Capacity"
-            },
-            "device_bmsserialnumber": {
-                "name": "BMS Serial Number"
-            },
-            "device_bmsmodel": {
-                "name": "BMS Model"
-            },
-            "device_bundleversion": {
-                "name": "Bundle Version"
-            },
-            "device_localportalremoteid": {
-                "name": "Local Portal Remote ID"
-            },
-            "device_dns": {
-                "name": "DNS Server"
-            },
-            "device_timezone_name": {
-                "name": "Device Timezone"
-            },
-            "technical_status_operationmode": {
-                "name": "Technical Operation Mode"
-            },
-            "technical_status_gridvoltage": {
-                "name": "Grid Voltage"
-            },
-            "technical_status_gridfrequency": {
-                "name": "Grid Frequency"
-            },
-            "technical_status_currenttogrid": {
-                "name": "Current To Grid"
-            },
-            "technical_status_inverterpower": {
-                "name": "Inverter Power"
-            },
-            "technical_status_invertertemperature": {
-                "name": "Inverter Temperature"
-            },
-            "technical_status_busvoltage": {
-                "name": "Bus Voltage"
-            },
-            "technical_status_gridcode": {
-                "name": "Grid Code"
-            },
-            "technical_status_dccurrentinjectionr": {
-                "name": "DC Current Injection R"
-            },
-            "technical_status_dccurrentinjections": {
-                "name": "DC Current Injection S"
-            },
-            "technical_status_dccurrentinjectiont": {
-                "name": "DC Current Injection T"
-            },
-            "technical_status_invertermodel": {
-                "name": "Technical Inverter Model"
-            },
-            "technical_status_inverterpowerrating": {
-                "name": "Technical Inverter Power Rating"
-            },
-            "technical_status_pv1voltage": {
-                "name": "PV1 Voltage"
-            },
-            "technical_status_pv1current": {
-                "name": "PV1 Current"
-            },
-            "technical_status_pv2voltage": {
-                "name": "PV2 Voltage"
-            },
-            "technical_status_pv2current": {
-                "name": "PV2 Current"
-            },
-            "technical_status_bmsvoltage": {
-                "name": "BMS Voltage"
-            },
-            "technical_status_bmscurrent": {
-                "name": "BMS Current"
-            },
-            "technical_status_bmstemperature": {
-                "name": "BMS Temperature"
-            },
-            "technical_status_bmsavgtemperature": {
-                "name": "BMS Average Temperature"
-            },
-            "technical_status_bmsmaxtemperature": {
-                "name": "BMS Max Temperature"
-            },
-            "technical_status_bmsmintemperature": {
-                "name": "BMS Min Temperature"
-            },
-            "technical_status_bmstotalcharge": {
-                "name": "BMS Total Charge"
-            },
-            "technical_status_bmstotaldischarge": {
-                "name": "BMS Total Discharge"
-            },
-            "technical_status_bmsstateofcharge": {
-                "name": "Technical BMS State of Charge"
-            },
-            "technical_status_bmsstate": {
-                "name": "BMS State"
-            },
-            "technical_status_bmsfaultcode": {
-                "name": "BMS Fault Code"
-            },
-            "technical_status_bmshighestcellvoltage": {
-                "name": "BMS Highest Cell Voltage"
-            },
-            "technical_status_bmslowestcellvoltage": {
-                "name": "BMS Lowest Cell Voltage"
-            },
-            "technical_status_bmscellvoltagedelta": {
-                "name": "BMS Cell Voltage Delta"
-            },
-            "technical_status_tidaprotocolversion": {
-                "name": "TIDA Protocol Version"
-            },
-            "technical_status_invbootloaderversion": {
-                "name": "Inverter Bootloader Version"
-            },
-            "maintenance_diagnostics_ramusage_total": {
-                "name": "System RAM Total"
-            },
-            "maintenance_diagnostics_ramusage_used": {
-                "name": "System RAM Used"
-            },
-            "maintenance_diagnostics_cpuusage_used": {
-                "name": "System CPU Usage"
-            },
-            "unread_notifications_count_total": {
-                "name": "Unread Notifications Count"
-            },
-            "notifications_total": {
-                "name": "Total Notifications Count"
-            }
-        },
-        "binary_sensor": {
-            "battery_charging": {
-                "name": "Battery Charging"
-            },
-            "battery_discharging": {
-                "name": "Battery Discharging"
-            },
-            "inverter_power_state": {
-                "name": "Inverter Power State"
-            },
-            "has_unread_notifications": {
-                "name": "Has Unread Notifications"
-            }
-        },
-        "switch": {
-            "inverter_power": {
-                "name": "Inverter power"
-            },
-            "energy_saving_mode": {
-                "name": "Energy saving mode"
-            }
-        },
-        "number": {
-            "charge_duration": {
-                "name": "Charge Duration"
-            },
-            "charge_end_soc": {
-                "name": "Charge Target SOC"
-            },
-            "charge_power": {
-                "name": "Charge Power (%)"
-            },
-            "charge_power_watt": {
-                "name": "Charge Power (Watt)"
-            },
-            "discharge_duration": {
-                "name": "Discharge Duration"
-            },
-            "discharge_end_soc": {
-                "name": "Discharge Target SOC"
-            },
-            "discharge_power": {
-                "name": "Discharge Power (%)"
-            },
-            "discharge_power_watt": {
-                "name": "Discharge Power (Watt)"
-            },
-            "run_duration": {
-                "name": "Run Duration"
-            },
-            "house_consumption_threshold": {
-                "name": "House consumption threshold"
-            },
-            "battery_backup_level": {
-                "name": "Battery backup level"
-            }
-        },
-        "select": {
-            "default_operation_mode": {
-                "name": "Default operation mode"
-            },
-            "current_operation_mode": {
-                "name": "Current operation mode"
-            }
-        },
-        "button": {
-            "mark_notifications_read": {
-                "name": "Mark all notifications read"
-            },
-            "stop_current_operation": {
-                "name": "Stop current operation"
-            }
-        },
-        "event": {
-            "notifications_event": {
-                "name": "Notifications event"
-            }
-        }
+    "abort": {
+      "single_instance_allowed": "Only a single instance is allowed.",
+      "already_configured": "This device is already configured.",
+      "unique_id_mismatch": "The serial number of the device does not match the one this entry was set up with. Please re-authenticate against the original inverter.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Configuration updated."
     }
+  },
+  "services": {
+    "reload": {
+      "name": "Reload",
+      "description": "Reloads the Eaton xStorage Home integration."
+    }
+  },
+  "exceptions": {
+    "power_command_failed": {
+      "message": "Failed to change the inverter power state."
+    },
+    "energy_saving_mode_failed": {
+      "message": "Failed to change energy saving mode."
+    },
+    "set_default_operation_mode_failed": {
+      "message": "Failed to set the default operation mode to {mode}."
+    },
+    "set_operation_mode_failed": {
+      "message": "Failed to set the current operation mode to {mode}."
+    },
+    "set_house_consumption_threshold_failed": {
+      "message": "Failed to set the house consumption threshold to {value} W."
+    },
+    "set_battery_backup_level_failed": {
+      "message": "Failed to set the battery backup level to {value} %."
+    },
+    "mark_notifications_read_failed": {
+      "message": "Failed to mark the notifications as read."
+    },
+    "stop_current_operation_failed": {
+      "message": "Failed to stop the current operation."
+    }
+  },
+  "system_health": {
+    "info": {
+      "device_reachable": "Device Reachable",
+      "api_host": "API Host",
+      "last_successful_update": "Last Successful Update"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "notifications": {
+        "name": "Notifications"
+      },
+      "latest_notification": {
+        "name": "Latest Notification"
+      },
+      "inverter_info": {
+        "name": "Inverter Info"
+      },
+      "bms_info": {
+        "name": "BMS Info"
+      },
+      "device_info": {
+        "name": "Device Info"
+      },
+      "technical_info": {
+        "name": "Technical Info"
+      },
+      "status_currentmode_command": {
+        "name": "Current Mode Command"
+      },
+      "status_currentmode_duration": {
+        "name": "Current Mode Duration"
+      },
+      "status_currentmode_starttime": {
+        "name": "Current Mode Start Time"
+      },
+      "status_currentmode_endtime": {
+        "name": "Current Mode End Time"
+      },
+      "status_currentmode_recurrence": {
+        "name": "Current Mode Recurrence"
+      },
+      "status_currentmode_type": {
+        "name": "Current Mode Type"
+      },
+      "status_currentmode_parameters_action": {
+        "name": "Current Mode Action"
+      },
+      "status_currentmode_parameters_power": {
+        "name": "Current Mode Power"
+      },
+      "status_currentmode_parameters_soc": {
+        "name": "Current Mode SOC"
+      },
+      "status_energyflow_acpvrole": {
+        "name": "AC PV Role"
+      },
+      "status_energyflow_acpvvalue": {
+        "name": "AC PV Value"
+      },
+      "status_energyflow_batterybackuplevel": {
+        "name": "Battery Backup Level"
+      },
+      "status_energyflow_batterystatus": {
+        "name": "Battery Status"
+      },
+      "status_energyflow_batteryenergyflow": {
+        "name": "Battery Power"
+      },
+      "status_energyflow_criticalloadrole": {
+        "name": "Critical Load Role"
+      },
+      "status_energyflow_criticalloadvalue": {
+        "name": "Critical Load Value"
+      },
+      "status_energyflow_dcpvrole": {
+        "name": "DC PV Role"
+      },
+      "status_energyflow_dcpvvalue": {
+        "name": "DC PV Value"
+      },
+      "status_energyflow_gridrole": {
+        "name": "Grid Role"
+      },
+      "status_energyflow_gridvalue": {
+        "name": "Grid Power"
+      },
+      "status_energyflow_noncriticalloadrole": {
+        "name": "Non-Critical Load Role"
+      },
+      "status_energyflow_noncriticalloadvalue": {
+        "name": "Non-Critical Load Value"
+      },
+      "status_energyflow_operationmode": {
+        "name": "Operation Mode"
+      },
+      "status_energyflow_selfconsumption": {
+        "name": "Self Consumption"
+      },
+      "status_energyflow_selfsufficiency": {
+        "name": "Self Sufficiency"
+      },
+      "status_energyflow_stateofcharge": {
+        "name": "Battery State of Charge"
+      },
+      "status_energyflow_energysavingmodeenabled": {
+        "name": "Energy Saving Mode Enabled"
+      },
+      "status_energyflow_energysavingmodeactivated": {
+        "name": "Energy Saving Mode Activated"
+      },
+      "status_last30daysenergyflow_gridconsumption": {
+        "name": "30 Days Grid Consumption"
+      },
+      "status_last30daysenergyflow_photovoltaicproduction": {
+        "name": "30 Days PV Production"
+      },
+      "status_last30daysenergyflow_selfconsumption": {
+        "name": "30 Days Self Consumption"
+      },
+      "status_last30daysenergyflow_selfsufficiency": {
+        "name": "30 Days Self Sufficiency"
+      },
+      "status_today_gridconsumption": {
+        "name": "Today's Grid Consumption"
+      },
+      "status_today_photovoltaicproduction": {
+        "name": "Today's PV Production"
+      },
+      "status_today_selfconsumption": {
+        "name": "Today's Self Consumption"
+      },
+      "status_today_selfsufficiency": {
+        "name": "Today's Self Sufficiency"
+      },
+      "device_firmwareversion": {
+        "name": "Firmware Version"
+      },
+      "device_inverterfirmwareversion": {
+        "name": "Inverter Firmware Version"
+      },
+      "device_bmsfirmwareversion": {
+        "name": "BMS Firmware Version"
+      },
+      "device_energysavingmode_houseconsumptionthreshold": {
+        "name": "House Consumption Threshold"
+      },
+      "device_invertermanufacturer": {
+        "name": "Inverter Manufacturer"
+      },
+      "device_invertermodelname": {
+        "name": "Inverter Model Name"
+      },
+      "device_invertervarating": {
+        "name": "Inverter VA Rating"
+      },
+      "device_inverterserialnumber": {
+        "name": "Inverter Serial Number"
+      },
+      "device_inverternominalvpv": {
+        "name": "Inverter Nominal VPV"
+      },
+      "device_bmscapacity": {
+        "name": "BMS Capacity"
+      },
+      "device_bmsserialnumber": {
+        "name": "BMS Serial Number"
+      },
+      "device_bmsmodel": {
+        "name": "BMS Model"
+      },
+      "device_bundleversion": {
+        "name": "Bundle Version"
+      },
+      "device_localportalremoteid": {
+        "name": "Local Portal Remote ID"
+      },
+      "device_dns": {
+        "name": "DNS Server"
+      },
+      "device_timezone_name": {
+        "name": "Device Timezone"
+      },
+      "technical_status_operationmode": {
+        "name": "Technical Operation Mode"
+      },
+      "technical_status_gridvoltage": {
+        "name": "Grid Voltage"
+      },
+      "technical_status_gridfrequency": {
+        "name": "Grid Frequency"
+      },
+      "technical_status_currenttogrid": {
+        "name": "Current To Grid"
+      },
+      "technical_status_inverterpower": {
+        "name": "Inverter Power"
+      },
+      "technical_status_invertertemperature": {
+        "name": "Inverter Temperature"
+      },
+      "technical_status_busvoltage": {
+        "name": "Bus Voltage"
+      },
+      "technical_status_gridcode": {
+        "name": "Grid Code"
+      },
+      "technical_status_dccurrentinjectionr": {
+        "name": "DC Current Injection R"
+      },
+      "technical_status_dccurrentinjections": {
+        "name": "DC Current Injection S"
+      },
+      "technical_status_dccurrentinjectiont": {
+        "name": "DC Current Injection T"
+      },
+      "technical_status_invertermodel": {
+        "name": "Technical Inverter Model"
+      },
+      "technical_status_inverterpowerrating": {
+        "name": "Technical Inverter Power Rating"
+      },
+      "technical_status_pv1voltage": {
+        "name": "PV1 Voltage"
+      },
+      "technical_status_pv1current": {
+        "name": "PV1 Current"
+      },
+      "technical_status_pv2voltage": {
+        "name": "PV2 Voltage"
+      },
+      "technical_status_pv2current": {
+        "name": "PV2 Current"
+      },
+      "technical_status_bmsvoltage": {
+        "name": "BMS Voltage"
+      },
+      "technical_status_bmscurrent": {
+        "name": "BMS Current"
+      },
+      "technical_status_bmstemperature": {
+        "name": "BMS Temperature"
+      },
+      "technical_status_bmsavgtemperature": {
+        "name": "BMS Average Temperature"
+      },
+      "technical_status_bmsmaxtemperature": {
+        "name": "BMS Max Temperature"
+      },
+      "technical_status_bmsmintemperature": {
+        "name": "BMS Min Temperature"
+      },
+      "technical_status_bmstotalcharge": {
+        "name": "BMS Total Charge"
+      },
+      "technical_status_bmstotaldischarge": {
+        "name": "BMS Total Discharge"
+      },
+      "technical_status_bmsstateofcharge": {
+        "name": "Technical BMS State of Charge"
+      },
+      "technical_status_bmsstate": {
+        "name": "BMS State"
+      },
+      "technical_status_bmsfaultcode": {
+        "name": "BMS Fault Code"
+      },
+      "technical_status_bmshighestcellvoltage": {
+        "name": "BMS Highest Cell Voltage"
+      },
+      "technical_status_bmslowestcellvoltage": {
+        "name": "BMS Lowest Cell Voltage"
+      },
+      "technical_status_bmscellvoltagedelta": {
+        "name": "BMS Cell Voltage Delta"
+      },
+      "technical_status_tidaprotocolversion": {
+        "name": "TIDA Protocol Version"
+      },
+      "technical_status_invbootloaderversion": {
+        "name": "Inverter Bootloader Version"
+      },
+      "maintenance_diagnostics_ramusage_total": {
+        "name": "System RAM Total"
+      },
+      "maintenance_diagnostics_ramusage_used": {
+        "name": "System RAM Used"
+      },
+      "maintenance_diagnostics_cpuusage_used": {
+        "name": "System CPU Usage"
+      },
+      "unread_notifications_count_total": {
+        "name": "Unread Notifications Count"
+      },
+      "notifications_total": {
+        "name": "Total Notifications Count"
+      }
+    },
+    "binary_sensor": {
+      "battery_charging": {
+        "name": "Battery Charging"
+      },
+      "battery_discharging": {
+        "name": "Battery Discharging"
+      },
+      "inverter_power_state": {
+        "name": "Inverter Power State"
+      },
+      "energy_saving_mode_activated": {
+        "name": "Energy Saving Mode Activated"
+      },
+      "bms_fault": {
+        "name": "BMS Fault"
+      },
+      "has_unread_notifications": {
+        "name": "Has Unread Notifications"
+      }
+    },
+    "switch": {
+      "inverter_power": {
+        "name": "Inverter power"
+      },
+      "energy_saving_mode": {
+        "name": "Energy saving mode"
+      }
+    },
+    "number": {
+      "charge_duration": {
+        "name": "Charge Duration"
+      },
+      "charge_end_soc": {
+        "name": "Charge Target SOC"
+      },
+      "charge_power": {
+        "name": "Charge Power (%)"
+      },
+      "charge_power_watt": {
+        "name": "Charge Power (Watt)"
+      },
+      "discharge_duration": {
+        "name": "Discharge Duration"
+      },
+      "discharge_end_soc": {
+        "name": "Discharge Target SOC"
+      },
+      "discharge_power": {
+        "name": "Discharge Power (%)"
+      },
+      "discharge_power_watt": {
+        "name": "Discharge Power (Watt)"
+      },
+      "run_duration": {
+        "name": "Run Duration"
+      },
+      "house_consumption_threshold": {
+        "name": "House consumption threshold"
+      },
+      "battery_backup_level": {
+        "name": "Battery backup level"
+      }
+    },
+    "select": {
+      "default_operation_mode": {
+        "name": "Default operation mode",
+        "state": {
+          "basic_mode": "Unit On (Basic Mode)",
+          "maximize_auto_consumption": "Maximize Auto-Consumption",
+          "variable_grid_injection": "Variable Grid Injection",
+          "frequency_regulation": "Frequency Regulation",
+          "peak_shaving": "Peak Shaving"
+        }
+      },
+      "current_operation_mode": {
+        "name": "Current operation mode",
+        "state": {
+          "basic_mode": "Unit On (Basic Mode)",
+          "maximize_auto_consumption": "Maximize Auto-Consumption",
+          "variable_grid_injection": "Variable Grid Injection",
+          "frequency_regulation": "Frequency Regulation",
+          "peak_shaving": "Peak Shaving",
+          "manual_charge": "Manual Charge",
+          "manual_discharge": "Manual Discharge"
+        }
+      }
+    },
+    "button": {
+      "mark_notifications_read": {
+        "name": "Mark all notifications read"
+      },
+      "stop_current_operation": {
+        "name": "Stop current operation"
+      }
+    },
+    "event": {
+      "notifications_event": {
+        "name": "Notifications event"
+      }
+    }
+  }
 }

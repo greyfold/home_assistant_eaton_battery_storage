@@ -1,30 +1,30 @@
+# Home Assistant does not validate this file for custom integrations
+# (script/hassfest/quality_scale.py returns early when integration.core is
+# False), so every status below is maintained by hand and audited per release.
 rules:
-  # Bronze (mandatory)
-  action-setup:
-    status: exempt
-    comment: Integration does not register custom service actions.
+  # Bronze
+  action-setup: done
   appropriate-polling: done
   brands:
     status: todo
-    comment: Branding assets need to be added.
+    comment: >-
+      Deliberately not done. The rule allows no exceptions, so this stays todo
+      rather than exempt. Since Home Assistant 2026.3 it needs only a brand/
+      folder holding icon.png and logo.png inside the integration, not a pull
+      request against home-assistant/brands, but no artwork exists for this
+      unofficial integration and Eaton's marks are not ours to ship.
   common-modules: done
   config-flow: done
-  config-flow-test-coverage:
-    status: todo
-    comment: Full test coverage for config flow needs to be implemented.
-  dependency-transparency: done
-  docs-actions:
+  config-flow-test-coverage: done
+  dependency-transparency:
     status: exempt
-    comment: Integration does not provide service actions.
-  docs-high-level-description:
-    status: todo
-    comment: Documentation needs high-level description.
-  docs-installation-instructions:
-    status: todo
-    comment: Step-by-step installation instructions needed.
-  docs-removal-instructions:
-    status: todo
-    comment: Removal instructions needed in documentation.
+    comment: >-
+      The device is spoken to directly over HTTP and the integration declares no
+      requirements, so there is no third-party library to vouch for.
+  docs-actions: done
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
   entity-event-setup: done
   entity-unique-id: done
   has-entity-name: done
@@ -34,5 +34,74 @@ rules:
   unique-config-entry: done
 
   # Silver
-  diagnostics: done
+  action-exceptions: done
+  config-entry-unloading: done
+  docs-configuration-parameters:
+    status: exempt
+    comment: |
+      There is no options flow. Connection settings are changed through the
+      reconfigure flow, which docs-installation-parameters covers.
+  docs-installation-parameters: done
+  entity-unavailable: done
+  integration-owner: done
+  log-when-unavailable: done
+  parallel-updates: done
   reauthentication-flow: done
+  test-coverage: done
+
+  # Gold
+  devices: done
+  diagnostics: done
+  discovery:
+    status: exempt
+    comment: The inverter does not announce itself on the network.
+  discovery-update-info:
+    status: exempt
+    comment: The inverter does not announce itself on the network.
+  docs-data-update:
+    status: todo
+    comment: The polling behaviour is not documented yet.
+  docs-examples:
+    status: todo
+    comment: >-
+      The rule wants blueprints on the blueprint exchange, not YAML in the
+      repository. The outdated examples folder has been removed; blueprints have
+      not been written.
+  docs-known-limitations: done
+  docs-supported-devices:
+    status: todo
+    comment: The supported hardware variants need to be listed.
+  docs-supported-functions: done
+  docs-troubleshooting: done
+  docs-use-cases:
+    status: todo
+    comment: Use cases need to be described in the documentation.
+  dynamic-devices:
+    status: exempt
+    comment: A config entry always represents exactly one inverter.
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default: done
+  entity-translations: done
+  exception-translations: done
+  icon-translations:
+    status: todo
+    comment: Icons are still set through _attr_icon instead of icons.json.
+  reconfiguration-flow: done
+  repair-issues:
+    status: exempt
+    comment: >-
+      Failures surface through the reauthentication flow and entity
+      unavailability; there is nothing a repair issue could add.
+  stale-devices:
+    status: exempt
+    comment: A config entry always represents exactly one inverter.
+
+  # Platinum
+  async-dependency: done
+  inject-websession: done
+  strict-typing:
+    status: todo
+    comment: >-
+      mypy runs in CI and passes, but not with the strict settings this rule
+      requires.

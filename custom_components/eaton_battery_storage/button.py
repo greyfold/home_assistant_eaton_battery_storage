@@ -2,115 +2,91 @@
 
 from __future__ import annotations
 
-import asyncio
-import logging
-from typing import TYPE_CHECKING
-
 from homeassistant.components.button import ButtonEntity
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from .api import EatonError
+from .const import DOMAIN
+from .coordinator import EatonConfigEntry, EatonXstorageHomeCoordinator
+from .entity import EatonEntity
 
-    from .coordinator import EatonBatteryStorageCoordinator
-
-_LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
     _hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    entry: EatonConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up button entities."""
-    coordinator: EatonBatteryStorageCoordinator = config_entry.runtime_data
-    entities = [
-        EatonXStorageMarkNotificationsReadButton(coordinator),
-        EatonXStorageStopCurrentOperationButton(coordinator),
-    ]
-    async_add_entities(entities)
+    coordinator = entry.runtime_data
+    async_add_entities(
+        [
+            EatonXStorageMarkNotificationsReadButton(coordinator),
+            EatonXStorageStopCurrentOperationButton(coordinator),
+        ]
+    )
 
 
-class EatonXStorageMarkNotificationsReadButton(CoordinatorEntity, ButtonEntity):
+class EatonXStorageBaseButton(EatonEntity, ButtonEntity):
+    """Common behavior for the Eaton xStorage Home buttons."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+
+class EatonXStorageMarkNotificationsReadButton(EatonXStorageBaseButton):
     """Button to mark all notifications as read."""
 
-    _attr_has_entity_name = True
-    _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:email-mark-as-unread"
+    _attr_translation_key = "mark_notifications_read"
 
-    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+    def __init__(self, coordinator: EatonXstorageHomeCoordinator) -> None:
         """Initialize the button."""
         super().__init__(coordinator)
         self._attr_unique_id = (
             f"{coordinator.config_entry.entry_id}_mark_notifications_read"
         )
-        self._attr_translation_key = "mark_notifications_read"
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return self.coordinator.device_info
 
     async def async_press(self) -> None:
         """Mark all notifications as read."""
         try:
-            result = await self.coordinator.api.mark_all_notifications_read()
-            if result.get("successful"):
-                _LOGGER.info("Successfully marked all notifications as read")
-                # Trigger coordinator update to refresh notification data
-                await self.coordinator.async_request_refresh()
-            else:
-                _LOGGER.error("Failed to mark notifications as read: %s", result)
-        except Exception as e:
-            _LOGGER.error("Error marking notifications as read: %s", e)
+            await self.coordinator.api.mark_all_notifications_read()
+        except EatonError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="mark_notifications_read_failed",
+            ) from err
+        finally:
+            await self.coordinator.async_request_refresh()
 
 
-class EatonXStorageStopCurrentOperationButton(CoordinatorEntity, ButtonEntity):
+class EatonXStorageStopCurrentOperationButton(EatonXStorageBaseButton):
     """Button to stop/cancel current operation by setting to basic mode."""
 
-    _attr_has_entity_name = True
-    _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:stop-circle"
+    _attr_translation_key = "stop_current_operation"
 
-    def __init__(self, coordinator: EatonBatteryStorageCoordinator) -> None:
+    def __init__(self, coordinator: EatonXstorageHomeCoordinator) -> None:
         """Initialize the button."""
         super().__init__(coordinator)
         self._attr_unique_id = (
             f"{coordinator.config_entry.entry_id}_stop_current_operation"
         )
-        self._attr_translation_key = "stop_current_operation"
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return self.coordinator.device_info
 
     async def async_press(self) -> None:
         """Stop current operation by setting to basic mode."""
         try:
-            # Send SET_BASIC_MODE command with minimal duration (1 hour)
-            result = await self.coordinator.api.send_device_command(
+            response = await self.coordinator.api.send_device_command(
                 "SET_BASIC_MODE", 1, {}
             )
-
-            if result.get("successful", result.get("result") is not None):
-                _LOGGER.info(
-                    "Successfully stopped current operation - set to basic mode"
-                )
-                await asyncio.sleep(1)
-            else:
-                _LOGGER.warning(
-                    "Stop operation API call may not have succeeded: %s", result
-                )
-                await asyncio.sleep(1)
-
-            # Trigger coordinator update to refresh current mode data
+        except EatonError as err:
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="stop_current_operation_failed",
+            ) from err
 
-        except Exception as e:
-            _LOGGER.error("Error stopping current operation: %s", e)
-            # Still refresh to get current state
-            await self.coordinator.async_request_refresh()
+        await self.coordinator.async_apply_command_result(response)

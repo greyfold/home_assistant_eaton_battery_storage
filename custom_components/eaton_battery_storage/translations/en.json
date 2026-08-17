@@ -9,11 +9,13 @@
           "username": "Username",
           "password": "Password",
           "inverter_sn": "Inverter Serial Number (Technician only)",
-          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
+          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)",
+          "verify_ssl": "Verify SSL certificate"
         },
         "data_description": {
-          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials. Defaults: Customer — user/user; Technician — admin/jlwgK41G.",
-          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels."
+          "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials. The default credentials for both are listed in the integration documentation.",
+          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels.",
+          "verify_ssl": "The inverter ships with a self-signed certificate, so verification is off by default. Enable it only if you installed a trusted certificate on the device."
         }
       },
       "reauth_confirm": {
@@ -24,44 +26,30 @@
           "username": "Username",
           "password": "Password",
           "inverter_sn": "Inverter Serial Number (Technician only)",
-          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
+          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)",
+          "verify_ssl": "Verify SSL certificate"
         },
         "data_description": {
           "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials.",
-          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system."
+          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system.",
+          "verify_ssl": "The inverter ships with a self-signed certificate, so verification is off by default."
         }
-      }
-    },
-    "error": {
-      "cannot_connect": "Failed to connect to the device. Please check your network connection and device settings.",
-      "invalid_auth": "Authentication failed. Please check your credentials.",
-      "err_invalid_inverter_sn": "Invalid inverter serial number.",
-      "err_wrong_credentials": "Wrong username or password.",
-      "auth_error_locked": "Your account was locked due to too many failed login attempts. Please try again in 10 minutes.",
-      "auth_unexpected_response": "Authentication failed with an unexpected response from the device.",
-      "auth_non_json_response": "Authentication failed: the device returned a non-JSON response.",
-      "required_inverter_sn": "Inverter serial number required for technician account.",
-      "unknown": "Unexpected error occurred during setup."
-    },
-    "abort": {
-      "single_instance_allowed": "Only a single instance is allowed."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "description": "Update your Eaton xStorage Home configuration. Choose Customer for basic access or Technician for advanced diagnostics. Enable PV sensors only if you have solar panels connected to your system.",
+      },
+      "reconfigure": {
+        "description": "Update the connection settings for your Eaton xStorage Home system. Changing these reloads the integration.",
         "data": {
           "host": "Device IP Address or Hostname",
           "user_type": "Account Type",
           "username": "Username",
           "password": "Password",
           "inverter_sn": "Inverter Serial Number (Technician only)",
-          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)"
+          "has_pv": "Enable PV Solar Panel Sensors (only if you have solar panels)",
+          "verify_ssl": "Verify SSL certificate"
         },
         "data_description": {
           "user_type": "Customer accounts have basic access. Technician accounts provide advanced diagnostics but require the inverter serial number and technician credentials.",
-          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels."
+          "has_pv": "Check this box only if you have solar panels connected to your Eaton xStorage system. This will create additional sensors for PV monitoring (voltage, current, production). Leave unchecked if you only have battery storage without solar panels.",
+          "verify_ssl": "The inverter ships with a self-signed certificate, so verification is off by default. Enable it only if you installed a trusted certificate on the device."
         }
       }
     },
@@ -71,10 +59,49 @@
       "err_invalid_inverter_sn": "Invalid inverter serial number.",
       "err_wrong_credentials": "Wrong username or password.",
       "auth_error_locked": "Your account was locked due to too many failed login attempts. Please try again in 10 minutes.",
-      "auth_unexpected_response": "Authentication failed with an unexpected response from the device.",
-      "auth_non_json_response": "Authentication failed: the device returned a non-JSON response.",
       "required_inverter_sn": "Inverter serial number required for technician account.",
+      "invalid_host": "Enter a valid IP address or hostname, without a scheme or path.",
+      "unknown_serial": "The device did not report its serial number, which is needed to identify it. Please try again, or enter the inverter serial number.",
       "unknown": "Unexpected error occurred during setup."
+    },
+    "abort": {
+      "single_instance_allowed": "Only a single instance is allowed.",
+      "already_configured": "This device is already configured.",
+      "unique_id_mismatch": "The serial number of the device does not match the one this entry was set up with. Please re-authenticate against the original inverter.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Configuration updated."
+    }
+  },
+  "services": {
+    "reload": {
+      "name": "Reload",
+      "description": "Reloads the Eaton xStorage Home integration."
+    }
+  },
+  "exceptions": {
+    "power_command_failed": {
+      "message": "Failed to change the inverter power state."
+    },
+    "energy_saving_mode_failed": {
+      "message": "Failed to change energy saving mode."
+    },
+    "set_default_operation_mode_failed": {
+      "message": "Failed to set the default operation mode to {mode}."
+    },
+    "set_operation_mode_failed": {
+      "message": "Failed to set the current operation mode to {mode}."
+    },
+    "set_house_consumption_threshold_failed": {
+      "message": "Failed to set the house consumption threshold to {value} W."
+    },
+    "set_battery_backup_level_failed": {
+      "message": "Failed to set the battery backup level to {value} %."
+    },
+    "mark_notifications_read_failed": {
+      "message": "Failed to mark the notifications as read."
+    },
+    "stop_current_operation_failed": {
+      "message": "Failed to stop the current operation."
     }
   },
   "system_health": {
@@ -88,6 +115,21 @@
     "sensor": {
       "notifications": {
         "name": "Notifications"
+      },
+      "latest_notification": {
+        "name": "Latest Notification"
+      },
+      "inverter_info": {
+        "name": "Inverter Info"
+      },
+      "bms_info": {
+        "name": "BMS Info"
+      },
+      "device_info": {
+        "name": "Device Info"
+      },
+      "technical_info": {
+        "name": "Technical Info"
       },
       "status_currentmode_command": {
         "name": "Current Mode Command"
@@ -370,6 +412,12 @@
       "inverter_power_state": {
         "name": "Inverter Power State"
       },
+      "energy_saving_mode_activated": {
+        "name": "Energy Saving Mode Activated"
+      },
+      "bms_fault": {
+        "name": "BMS Fault"
+      },
       "has_unread_notifications": {
         "name": "Has Unread Notifications"
       }
@@ -419,10 +467,26 @@
     },
     "select": {
       "default_operation_mode": {
-        "name": "Default operation mode"
+        "name": "Default operation mode",
+        "state": {
+          "basic_mode": "Unit On (Basic Mode)",
+          "maximize_auto_consumption": "Maximize Auto-Consumption",
+          "variable_grid_injection": "Variable Grid Injection",
+          "frequency_regulation": "Frequency Regulation",
+          "peak_shaving": "Peak Shaving"
+        }
       },
       "current_operation_mode": {
-        "name": "Current operation mode"
+        "name": "Current operation mode",
+        "state": {
+          "basic_mode": "Unit On (Basic Mode)",
+          "maximize_auto_consumption": "Maximize Auto-Consumption",
+          "variable_grid_injection": "Variable Grid Injection",
+          "frequency_regulation": "Frequency Regulation",
+          "peak_shaving": "Peak Shaving",
+          "manual_charge": "Manual Charge",
+          "manual_discharge": "Manual Discharge"
+        }
       }
     },
     "button": {

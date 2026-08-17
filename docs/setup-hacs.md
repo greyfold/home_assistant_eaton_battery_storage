@@ -45,14 +45,14 @@ In the previous step, you successfully installed the Get HACS extension. Please 
 ## Device activation
 Please make sure to have a Github account, the basic plan is free for individuals and organizations. This step will ensure you can install the eaton_battery_storage integration in your Home Assistant.
 
-Before being redirected to GitHub, you will see the following information : 
+Before being redirected to GitHub, you will see the following information :
 
 ![Device Activation](https://raw.githubusercontent.com/greyfold/home_assistant_eaton_xstorage_home/refs/heads/main/images/hacs-github-code.png "Device Activation")
 
 Follow the instructions in the modal.
 
 1. Enter the key provided by Home Assistant before.
-    
+
     ![Activation code](https://raw.githubusercontent.com/greyfold/home_assistant_eaton_xstorage_home/refs/heads/main/images/hacs-configuration-device-activation.png "Enter your activation code")
 
 - Click on **Continue**

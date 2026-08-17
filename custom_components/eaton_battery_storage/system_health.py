@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components import system_health
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
@@ -20,15 +21,25 @@ def async_register(
 
 async def system_health_info(hass: HomeAssistant) -> dict[str, Any]:
     """Get info for the system health panel."""
-    entries = hass.config_entries.async_entries(DOMAIN)
-    if not entries:
-        return {}
+    coordinators = [
+        entry.runtime_data
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.state is ConfigEntryState.LOADED
+    ]
+    if not coordinators:
+        return {"device_reachable": False, "last_successful_update": "Never"}
 
-    coordinator = entries[0].runtime_data
-    return {
-        "device_reachable": coordinator.last_update_success,
-        "api_host": coordinator.api.host,
-        "last_successful_update": str(coordinator.last_update_success_time)
+    # The panel can only translate a fixed set of keys, so several inverters are
+    # folded into one entry each, reporting the worst case of the group.
+    update_times = [
+        coordinator.last_update_success_time
+        for coordinator in coordinators
         if coordinator.last_update_success_time
-        else "Never",
+    ]
+    return {
+        "device_reachable": all(
+            coordinator.last_update_success for coordinator in coordinators
+        ),
+        "api_host": ", ".join(coordinator.api.host for coordinator in coordinators),
+        "last_successful_update": str(min(update_times)) if update_times else "Never",
     }

@@ -1,0 +1,55 @@
+[project]
+name = "eaton_battery_storage"
+version = "1.0.0"
+description = "Home Assistant custom integration for the Eaton xStorage Home battery system"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ASYNC", # flake8-async
+    "D",   # pydocstyle
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "D203", # incompatible with D211
+    "D213", # incompatible with D212
+    "E501", # line length is handled by the formatter
+    "RUF012", # Home Assistant entity attributes are plain class attributes
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D103"]
+
+[tool.mypy]
+# The Python version is taken from the interpreter, which must match the one
+# Home Assistant itself runs on.
+follow_imports = "silent"
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--strict-markers"
+
+[tool.pylint."messages control"]
+# Home Assistant's frozen kw_only entity descriptions confuse the checker.
+disable = ["unexpected-keyword-arg"]
